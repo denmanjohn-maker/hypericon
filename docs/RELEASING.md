@@ -43,17 +43,42 @@ base64 -i developer-id.p12 | pbcopy
 
 ### 3. Sparkle update key
 
-Download the latest [Sparkle release](https://github.com/sparkle-project/Sparkle/releases), unpack it, and run:
+Sparkle's `generate_keys` tool creates the key pair. Use the copy Xcode downloads with the Sparkle package, which macOS runs without complaint. Generate and open the project once so the packages resolve:
+
+```bash
+xcodegen generate
+```
+
+```bash
+open HyperIcon.xcodeproj
+```
+
+Then find the tool:
+
+```bash
+find ~/Library/Developer/Xcode/DerivedData -path '*artifacts/sparkle/Sparkle/bin/generate_keys'
+```
+
+Run the path it prints. It prints a public key and stores the private key in your login keychain; allow the Keychain prompt. Run the same path again with `-x` to export the private key:
+
+```bash
+/path/printed/above/generate_keys -x sparkle-private-key.txt
+```
+
+<details>
+<summary>Using a Sparkle release you downloaded yourself</summary>
+
+A copy downloaded in a browser is quarantined, and macOS refuses to run it with a warning that it may contain malware. The tool is not notarized; the warning does not mean anything was found. After confirming the archive came from [github.com/sparkle-project/Sparkle/releases](https://github.com/sparkle-project/Sparkle/releases), remove the quarantine flag from inside the unpacked folder:
+
+```bash
+xattr -dr com.apple.quarantine .
+```
 
 ```bash
 ./bin/generate_keys
 ```
 
-It prints a public key and stores the private key in your login keychain. Export the private key:
-
-```bash
-./bin/generate_keys -x sparkle-private-key.txt
-```
+</details>
 
 - Paste the **public** key into [`Config/HyperIcon.xcconfig`](../Config/HyperIcon.xcconfig) as `SPARKLE_PUBLIC_KEY = ...` and commit it. It is not a secret.
 - Add the contents of `sparkle-private-key.txt` as the secret `SPARKLE_ED_PRIVATE_KEY`, then delete the file.
