@@ -12,10 +12,10 @@ public struct FolderScanner: Sendable {
     private static let keys: [URLResourceKey] = [.isDirectoryKey, .isPackageKey, .isSymbolicLinkKey]
 
     public init(home: URL, maxDepth: Int, skipNames: Set<String>, excludedPaths: [String] = []) {
-        self.home = home.standardizedFileURL
+        self.home = home.canonicalFolder
         self.maxDepth = max(1, maxDepth)
         self.skipNames = skipNames
-        self.excludedPaths = excludedPaths.map { URL(fileURLWithPath: $0).standardizedFileURL.path }
+        self.excludedPaths = excludedPaths.map { URL(fileURLWithPath: $0).canonicalFolder.path }
     }
 
     static func isGitRepository(_ folder: URL) -> Bool {
@@ -57,7 +57,7 @@ public struct FolderScanner: Sendable {
 
     /// Whether a single folder (reported by the file-system watcher) would be reached by `walk`.
     public func isEligible(_ folder: URL) -> Bool {
-        let folder = folder.standardizedFileURL
+        let folder = folder.canonicalFolder
         let homeParts = home.pathComponents
         let parts = folder.pathComponents
         guard parts.count > homeParts.count, Array(parts.prefix(homeParts.count)) == homeParts else { return false }

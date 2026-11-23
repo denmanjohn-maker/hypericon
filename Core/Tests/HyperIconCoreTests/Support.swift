@@ -32,7 +32,7 @@ class TempDirTestCase: XCTestCase {
     override func setUpWithError() throws {
         root = FileManager.default.temporaryDirectory.appendingPathComponent("hypericon-" + UUID().uuidString, isDirectory: true)
         try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
-        root = root.resolvingSymlinksInPath().standardizedFileURL
+        root = root.canonicalFolder
     }
 
     override func tearDownWithError() throws {

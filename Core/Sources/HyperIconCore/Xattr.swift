@@ -4,6 +4,16 @@ import Foundation
 /// even if the journal is lost.
 public let appliedAttribute = "com.hypericon.applied"
 
+extension URL {
+    /// The folder's real on-disk location with symlinks resolved, in the same form the file system reports
+    /// for its children (for example `/private/var/...` rather than `/var/...`).
+    var canonicalFolder: URL {
+        guard let resolved = realpath(path, nil) else { return standardizedFileURL }
+        defer { free(resolved) }
+        return URL(fileURLWithPath: String(cString: resolved), isDirectory: true)
+    }
+}
+
 enum Xattr {
     static func set(_ name: String, value: String, on url: URL) {
         let bytes = Array(value.utf8)

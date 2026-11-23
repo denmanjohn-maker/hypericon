@@ -36,7 +36,7 @@ public final class Engine {
     public init(paths: AppPaths = AppPaths(), themeStore: ThemeStore, setter: IconSetter = WorkspaceIconSetter(),
                 home: URL = FileManager.default.homeDirectoryForCurrentUser) {
         self.paths = paths
-        self.home = home.standardizedFileURL
+        self.home = home.canonicalFolder
         self.themeStore = themeStore
         self.setter = setter
         paths.ensure()
@@ -142,11 +142,11 @@ public final class Engine {
             guard let context = self.makeContext() else { return }
             var candidates = Set<String>()
             for path in changedPaths {
-                let url = URL(fileURLWithPath: path, isDirectory: true).standardizedFileURL
+                let url = URL(fileURLWithPath: path, isDirectory: true).canonicalFolder
                 candidates.insert(url.path)
                 let children = (try? FileManager.default.contentsOfDirectory(at: url, includingPropertiesForKeys: nil, options: [.skipsHiddenFiles])) ?? []
                 for child in children.prefix(500) where self.journal[child.path] == nil {
-                    candidates.insert(child.standardizedFileURL.path)
+                    candidates.insert(child.path)
                 }
             }
             var changed = false
