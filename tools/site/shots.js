@@ -4,7 +4,7 @@ const path = require('path');
 const { chromium } = require('playwright');
 
 const site = path.resolve(__dirname, '..', '..', 'site');
-const themes = ['synthwave-84', 'scifi-hud', 'winter-holiday', 'nineties-desktop'];
+const themes = ['halloween', 'thanksgiving', 'winter-holiday', 'synthwave-84'];
 const review = process.argv[2];
 
 (async () => {
@@ -21,11 +21,11 @@ const review = process.argv[2];
     await page.locator('.scene').screenshot({ path: path.join(site, 'assets', `screenshot-${id}.png`) });
   }
   if (review) {
-    await page.goto('file://' + path.join(site, 'index.html') + '?theme=synthwave-84');
+    await page.goto('file://' + path.join(site, 'index.html') + '?theme=halloween');
     await page.waitForLoadState('networkidle');
     await page.screenshot({ path: path.join(review, 'site-desktop.png'), fullPage: true, scale: 'css' });
     const phone = await browser.newPage({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 1 });
-    await phone.goto('file://' + path.join(site, 'index.html') + '?theme=halloween');
+    await phone.goto('file://' + path.join(site, 'index.html') + '?theme=thanksgiving');
     await phone.waitForLoadState('networkidle');
     const overflow = await phone.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
     if (overflow > 0) problems.push('phone layout scrolls horizontally by ' + overflow + 'px');

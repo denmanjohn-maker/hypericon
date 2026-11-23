@@ -26,7 +26,7 @@ for name in sorted(os.listdir(THEMES)):
         icon = Image.open(os.path.join(THEMES, name, f"{cat}.png")).convert("RGBA").resize((CELL, CELL), resample)
         sheet.paste(icon, ((i % COLS) * CELL, (i // COLS) * CELL))
     sheet.save(os.path.join(ASSETS, "sprites", f"{name}.png"), optimize=True)
-    themes.append({k: manifest[k] for k in ("id", "name", "group", "description", "accent", "background")})
+    themes.append({k: manifest[k] for k in ("id", "name", "group", "description")})
 
 themes.sort(key=lambda t: (GROUPS.index(t["group"]) if t["group"] in GROUPS else 99, t["name"]))
 with open(os.path.join(ASSETS, "themes.js"), "w") as f:

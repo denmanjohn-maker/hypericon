@@ -2,10 +2,8 @@
   "id": "scifi-hud",
   "name": "Sci-Fi HUD",
   "group": "Sci-Fi",
-  "description": "Angular starship console panels with a cyan glow.",
-  "accent": "#45f0ff",
-  "background": "#050d16",
-  "version": 1,
+  "description": "Riveted console panels with holographic displays.",
+  "version": 2,
   "author": "HyperIcon",
   "categories": [
     "folder",

@@ -2,10 +2,8 @@
   "id": "harvest",
   "name": "Harvest",
   "group": "Holidays",
-  "description": "Warm autumn folders with stitched edges and fallen leaves.",
-  "accent": "#eb9a2c",
-  "background": "#f6ead6",
-  "version": 1,
+  "description": "Wooden market crates with rope handles and branded symbols.",
+  "version": 2,
   "author": "HyperIcon",
   "categories": [
     "folder",

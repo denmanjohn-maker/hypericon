@@ -17,7 +17,7 @@ for theme in themes:
     except (OSError, ValueError) as exc:
         errors.append(f"{theme}: theme.json unreadable ({exc})")
         continue
-    for field in ("id", "name", "group", "description", "accent"):
+    for field in ("id", "name", "group", "description"):
         if not manifest.get(field):
             errors.append(f"{theme}: theme.json has no '{field}'")
     if manifest.get("id") != theme:

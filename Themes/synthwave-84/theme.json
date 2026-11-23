@@ -2,10 +2,8 @@
   "id": "synthwave-84",
   "name": "Synthwave '84",
   "group": "80s",
-  "description": "Sunset gradients over a neon grid.",
-  "accent": "#ff62a6",
-  "background": "#160a2e",
-  "version": 1,
+  "description": "Cassette tapes with striped labels and spinning reels.",
+  "version": 2,
   "author": "HyperIcon",
   "categories": [
     "folder",

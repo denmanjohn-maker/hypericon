@@ -2,10 +2,8 @@
   "id": "platinum-classic",
   "name": "Platinum Classic",
   "group": "OS Classics",
-  "description": "Lavender bevelled folders in the style of late-90s desktops.",
-  "accent": "#8d8dc4",
-  "background": "#dcdcdc",
-  "version": 1,
+  "description": "Bevelled folders in the style of late-90s desktops.",
+  "version": 2,
   "author": "HyperIcon",
   "categories": [
     "folder",
