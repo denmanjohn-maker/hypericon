@@ -1,0 +1,41 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  themes:
+    name: Theme assets
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 tools/check_themes.py
+
+  build:
+    name: Build and test
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Core tests
+        run: swift test --package-path Core
+      - name: Generate Xcode project
+        run: |
+          brew install xcodegen
+          xcodegen generate
+      - name: Build app (unsigned)
+        run: |
+          set -o pipefail
+          xcodebuild build -project HyperIcon.xcodeproj -scheme HyperIcon -configuration Debug \
+            -derivedDataPath build/DD CODE_SIGNING_ALLOWED=NO | tail -n 60
+      - name: Smoke test the bundled command line
+        run: |
+          APP=build/DD/Build/Products/Debug/HyperIcon.app
+          test "$("$APP/Contents/MacOS/HyperIcon" themes | wc -l)" -ge 12
+          mkdir -p "$RUNNER_TEMP/repo/.git"
+          test "$("$APP/Contents/MacOS/HyperIcon" classify "$RUNNER_TEMP/repo")" = git
