@@ -58,6 +58,19 @@ jobs:
           security list-keychain -d user -s "$KEYCHAIN"
           rm "$RUNNER_TEMP/developer-id.p12"
 
+          # Say exactly what is wrong with the certificate rather than failing later inside xcodebuild.
+          IDENTITIES="$(security find-identity -v -p codesigning "$KEYCHAIN")"
+          echo "Signing identities in the imported .p12 (names hidden):"
+          echo "$IDENTITIES" | sed -E 's/"([^:"]+):[^"]*"/"\1"/; s/^ *[0-9]+\) [0-9A-F]+ /  /'
+          if ! grep -q '"Developer ID Application:' <<<"$IDENTITIES"; then
+            echo "::error::DEVELOPER_ID_P12_BASE64 does not contain a 'Developer ID Application' certificate with its private key. In Keychain Access, open 'My Certificates', select the 'Developer ID Application' entry (it must have a private key under it) and export that as .p12. An 'Apple Development' or 'Developer ID Installer' certificate will not work. See docs/RELEASING.md."
+            exit 1
+          fi
+          if ! grep '"Developer ID Application:' <<<"$IDENTITIES" | grep -q "($APPLE_TEAM_ID)"; then
+            echo "::error::APPLE_TEAM_ID does not match the team on the Developer ID Application certificate. The Team ID is the 10 characters in brackets at the end of the certificate's name."
+            exit 1
+          fi
+
       - name: Generate Xcode project
         run: |
           brew install xcodegen

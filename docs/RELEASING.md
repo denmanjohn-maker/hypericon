@@ -17,7 +17,7 @@ You do these once, on a Mac, with your Apple Developer account.
 ### 1. Developer ID certificate
 
 1. In Xcode: **Settings → Accounts → your team → Manage Certificates → + → Developer ID Application**.
-2. Open **Keychain Access**, find *Developer ID Application: Your Name (TEAMID)*, right-click → **Export**, save as `developer-id.p12` and set a password.
+2. Open **Keychain Access**, choose the **My Certificates** category, and find *Developer ID Application: Your Name (TEAMID)*. It must have a private key under it when expanded. Right-click the certificate → **Export**, save as `developer-id.p12` and set a password. Exporting from the plain *Certificates* category, or exporting an *Apple Development* certificate, produces a file the release cannot sign with.
 3. Encode it for GitHub:
 
 ```bash
