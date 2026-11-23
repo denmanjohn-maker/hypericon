@@ -2,10 +2,8 @@
   "id": "winter-holiday",
   "name": "Winter Holiday",
   "group": "Holidays",
-  "description": "Snow-capped red folders for the festive season.",
-  "accent": "#e8434a",
-  "background": "#0f2a3a",
-  "version": 1,
+  "description": "Folders wrapped as gifts, with ribbon, a bow and a tag.",
+  "version": 2,
   "author": "HyperIcon",
   "categories": [
     "folder",

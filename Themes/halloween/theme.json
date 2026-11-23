@@ -2,10 +2,8 @@
   "id": "halloween",
   "name": "Halloween",
   "group": "Holidays",
-  "description": "Pumpkin-orange folders dripping with purple slime.",
-  "accent": "#ff9426",
-  "background": "#1a0b26",
-  "version": 1,
+  "description": "Jack-o'-lantern folders with carved, candle-lit symbols.",
+  "version": 2,
   "author": "HyperIcon",
   "categories": [
     "folder",

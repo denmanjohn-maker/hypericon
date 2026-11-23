@@ -116,97 +116,79 @@ window.HYPERICON = {
    "id": "halloween",
    "name": "Halloween",
    "group": "Holidays",
-   "description": "Pumpkin-orange folders dripping with purple slime.",
-   "accent": "#ff9426",
-   "background": "#1a0b26"
+   "description": "Jack-o'-lantern folders with carved, candle-lit symbols."
   },
   {
    "id": "harvest",
    "name": "Harvest",
    "group": "Holidays",
-   "description": "Warm autumn folders with stitched edges and fallen leaves.",
-   "accent": "#eb9a2c",
-   "background": "#f6ead6"
+   "description": "Wooden market crates with rope handles and branded symbols."
+  },
+  {
+   "id": "thanksgiving",
+   "name": "Thanksgiving",
+   "group": "Holidays",
+   "description": "A turkey's feather fan and a pilgrim buckle on every folder."
   },
   {
    "id": "valentine",
    "name": "Valentine",
    "group": "Holidays",
-   "description": "Pink folders scattered with hearts.",
-   "accent": "#ee3f7c",
-   "background": "#fff0f5"
+   "description": "Love-letter envelopes sealed with a wax heart."
   },
   {
    "id": "winter-holiday",
    "name": "Winter Holiday",
    "group": "Holidays",
-   "description": "Snow-capped red folders for the festive season.",
-   "accent": "#e8434a",
-   "background": "#0f2a3a"
+   "description": "Folders wrapped as gifts, with ribbon, a bow and a tag."
   },
   {
    "id": "scifi-hud",
    "name": "Sci-Fi HUD",
    "group": "Sci-Fi",
-   "description": "Angular starship console panels with a cyan glow.",
-   "accent": "#45f0ff",
-   "background": "#050d16"
+   "description": "Riveted console panels with holographic displays."
   },
   {
    "id": "neon-arcade",
    "name": "Neon Arcade",
    "group": "80s",
-   "description": "Glowing neon tube outlines straight from the arcade.",
-   "accent": "#ff2bd6",
-   "background": "#07070d"
+   "description": "Arcade cabinets with a joystick, buttons and a neon screen."
   },
   {
    "id": "synthwave-84",
    "name": "Synthwave '84",
    "group": "80s",
-   "description": "Sunset gradients over a neon grid.",
-   "accent": "#ff62a6",
-   "background": "#160a2e"
+   "description": "Cassette tapes with striped labels and spinning reels."
   },
   {
    "id": "8-bit-pixel",
    "name": "8-Bit Pixel",
    "group": "Computer Retro",
-   "description": "Chunky low-resolution pixel art.",
-   "accent": "#ffb52e",
-   "background": "#22304a"
+   "description": "Chunky low-resolution pixel art."
   },
   {
    "id": "green-phosphor",
    "name": "Green Phosphor CRT",
    "group": "Computer Retro",
-   "description": "Monochrome terminal green with scanlines.",
-   "accent": "#35ff6a",
-   "background": "#030a03"
+   "description": "Beige terminals with a glowing green screen."
   },
   {
    "id": "aqua-gloss",
    "name": "Aqua Gloss",
    "group": "OS Classics",
-   "description": "Glossy pinstriped blue from the early 2000s.",
-   "accent": "#2380e8",
-   "background": "#e9f2fb"
+   "description": "Glossy pinstriped folders from the early 2000s."
   },
   {
    "id": "nineties-desktop",
    "name": "Nineties Desktop",
    "group": "OS Classics",
-   "description": "Manila yellow, black outlines and hard shadows.",
-   "accent": "#ffd633",
-   "background": "#008080"
+   "description": "Manila folders with black outlines and hard shadows."
   },
   {
    "id": "platinum-classic",
    "name": "Platinum Classic",
    "group": "OS Classics",
-   "description": "Lavender bevelled folders in the style of late-90s desktops.",
-   "accent": "#8d8dc4",
-   "background": "#dcdcdc"
+   "description": "Bevelled folders in the style of late-90s desktops."
   }
  ]
 };

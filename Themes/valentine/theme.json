@@ -2,10 +2,8 @@
   "id": "valentine",
   "name": "Valentine",
   "group": "Holidays",
-  "description": "Pink folders scattered with hearts.",
-  "accent": "#ee3f7c",
-  "background": "#fff0f5",
-  "version": 1,
+  "description": "Love-letter envelopes sealed with a wax heart.",
+  "version": 2,
   "author": "HyperIcon",
   "categories": [
     "folder",

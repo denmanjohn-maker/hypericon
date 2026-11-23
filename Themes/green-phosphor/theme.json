@@ -2,10 +2,8 @@
   "id": "green-phosphor",
   "name": "Green Phosphor CRT",
   "group": "Computer Retro",
-  "description": "Monochrome terminal green with scanlines.",
-  "accent": "#35ff6a",
-  "background": "#030a03",
-  "version": 1,
+  "description": "Beige terminals with a glowing green screen.",
+  "version": 2,
   "author": "HyperIcon",
   "categories": [
     "folder",

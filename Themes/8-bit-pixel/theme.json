@@ -3,9 +3,7 @@
   "name": "8-Bit Pixel",
   "group": "Computer Retro",
   "description": "Chunky low-resolution pixel art.",
-  "accent": "#ffb52e",
-  "background": "#22304a",
-  "version": 1,
+  "version": 2,
   "author": "HyperIcon",
   "categories": [
     "folder",

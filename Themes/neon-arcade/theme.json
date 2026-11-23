@@ -2,10 +2,8 @@
   "id": "neon-arcade",
   "name": "Neon Arcade",
   "group": "80s",
-  "description": "Glowing neon tube outlines straight from the arcade.",
-  "accent": "#ff2bd6",
-  "background": "#07070d",
-  "version": 1,
+  "description": "Arcade cabinets with a joystick, buttons and a neon screen.",
+  "version": 2,
   "author": "HyperIcon",
   "categories": [
     "folder",

@@ -7,12 +7,12 @@
 <meta name="description" content="HyperIcon is a macOS menu bar utility that gives every Finder folder an icon based on its contents, and lets you switch the whole icon theme in one click. Fully reversible.">
 <meta property="og:title" content="HyperIcon — Finder folders that show what's inside">
 <meta property="og:description" content="Content-aware folder icons for macOS with one-click themes. Fully reversible.">
-<meta property="og:image" content="assets/screenshot-synthwave-84.png">
+<meta property="og:image" content="assets/screenshot-halloween.png">
 <link rel="icon" href="assets/app-icon.png">
 <style>
 :root {
   --bg: #0d0e14; --panel: #161823; --panel-2: #1e2130; --line: #2b2f42;
-  --text: #eef0f7; --muted: #a3a9bf; --accent: #ff62a6; --scene: #160a2e;
+  --text: #eef0f7; --muted: #a3a9bf; --accent: #7aa7ff; --scene: #23262f;
   --radius: 14px;
   font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", Inter, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
 }
@@ -50,8 +50,7 @@ header.hero p.lead { max-width: 660px; margin: 18px auto 26px; font-size: 1.14re
 
 /* ---------- live desktop demo ---------- */
 .scene { margin: 44px auto 0; border-radius: 18px; overflow: hidden; border: 1px solid var(--line);
-  background: radial-gradient(120% 90% at 20% 0%, color-mix(in srgb, var(--accent) 34%, var(--scene)) 0%, var(--scene) 62%);
-  transition: background .4s; box-shadow: 0 30px 80px rgba(0,0,0,.5); text-align: left; }
+  background: linear-gradient(160deg, #3a3e4c 0%, var(--scene) 70%); box-shadow: 0 30px 80px rgba(0,0,0,.5); text-align: left; }
 .menubar { display: flex; align-items: center; gap: 16px; height: 28px; padding: 0 14px; font-size: 12.5px;
   background: rgba(20,20,28,.55); backdrop-filter: blur(12px); color: #f2f2f5; }
 .menubar b { font-weight: 650; }
@@ -82,7 +81,7 @@ body.pixel .ico { image-rendering: pixelated; }
 .picker h4 { margin: 8px 0 6px; font-size: 10px; letter-spacing: .08em; color: #9093a3; font-weight: 650; }
 .cards { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px 8px; }
 .card { all: unset; display: block; min-width: 0; cursor: pointer; text-align: center; font-size: 10.5px; color: #dfe1ea; border-radius: 8px; }
-.card .thumb { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); padding: 5px; border-radius: 8px; border: 1px solid rgba(255,255,255,.14); margin-bottom: 4px; }
+.card .thumb { background: #30333d; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); padding: 5px; border-radius: 8px; border: 1px solid rgba(255,255,255,.14); margin-bottom: 4px; }
 .card .thumb i { display: block; aspect-ratio: 1; background-size: 900% 300%; background-repeat: no-repeat; }
 .card[aria-pressed="true"] .thumb { outline: 3px solid #4c9bff; outline-offset: -1px; }
 .card[aria-pressed="true"] { font-weight: 650; }
@@ -117,10 +116,10 @@ section { padding: 84px 0 0; }
 .theme { all: unset; cursor: pointer; display: block; border-radius: var(--radius); overflow: hidden; border: 1px solid var(--line); background: var(--panel); transition: transform .15s, border-color .2s; }
 .theme:hover { transform: translateY(-2px); }
 .theme:focus-visible, .theme[aria-pressed="true"] { border-color: var(--text); }
-.theme .strip { display: grid; grid-template-columns: repeat(4, 1fr); padding: 16px 14px; }
+.theme .strip { background: #30333d; display: grid; grid-template-columns: repeat(4, 1fr); padding: 16px 14px; }
 .theme .strip i { display: block; aspect-ratio: 1; background-size: 900% 300%; background-repeat: no-repeat; }
 .theme .meta { padding: 12px 16px 16px; }
-.theme .meta small { color: var(--accent-own); font-weight: 700; letter-spacing: .08em; text-transform: uppercase; font-size: .7rem; }
+.theme .meta small { color: var(--muted); font-weight: 700; letter-spacing: .08em; text-transform: uppercase; font-size: .7rem; }
 .theme .meta p { color: var(--muted); font-size: .9rem; margin-top: 4px; }
 
 .split { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 28px; align-items: center; margin-top: 10px; }
@@ -188,7 +187,7 @@ footer .wrap { display: flex; gap: 20px; flex-wrap: wrap; justify-content: space
           <div class="files" id="files"></div>
         </div>
         <div class="popover">
-          <div class="head"><div><strong id="active-name">Synthwave '84</strong><small>1,284 folders themed</small></div><span class="switch" aria-hidden="true"></span></div>
+          <div class="head"><div><strong id="active-name">Halloween</strong><small>1,284 folders themed</small></div><span class="switch" aria-hidden="true"></span></div>
           <div class="picker" id="picker"></div>
           <div class="rows" aria-hidden="true"><div>Rescan Folders</div><div>Restore Original Icons…</div><div>Settings…</div></div>
         </div>
@@ -211,8 +210,8 @@ footer .wrap { display: flex; gap: 20px; flex-wrap: wrap; justify-content: space
 
   <section id="themes">
     <p class="kicker">Themes</p>
-    <h2>Twelve themes. One click each.</h2>
-    <p class="sub">Dress your Mac for the holidays, send it back to the eighties, or give it the glow of a starship console. Every theme covers all 27 folder types. Select one to try it on this page.</p>
+    <h2>Thirteen themes. One click each.</h2>
+    <p class="sub">Each theme rebuilds the folder itself: a carved pumpkin, a wrapped gift, a cassette tape, an arcade cabinet. The symbol on it still tells you what is inside. Every theme covers all 27 folder types. Select one to try it on this page.</p>
     <div class="gallery" id="gallery"></div>
   </section>
 
@@ -221,10 +220,10 @@ footer .wrap { display: flex; gap: 20px; flex-wrap: wrap; justify-content: space
     <h2>Out of the way until you want it.</h2>
     <p class="sub">HyperIcon lives in the menu bar with no Dock icon. Open it to switch themes, pause, or put everything back.</p>
     <div class="shots">
+      <figure><img src="assets/screenshot-halloween.png" alt="Illustration of a Finder window themed with Halloween next to the HyperIcon menu bar panel" loading="lazy"><figcaption>Halloween</figcaption></figure>
+      <figure><img src="assets/screenshot-thanksgiving.png" alt="Illustration of a Finder window themed with Thanksgiving next to the HyperIcon menu bar panel" loading="lazy"><figcaption>Thanksgiving</figcaption></figure>
+      <figure><img src="assets/screenshot-winter-holiday.png" alt="Illustration of a Finder window themed with Winter Holiday next to the HyperIcon menu bar panel" loading="lazy"><figcaption>Winter Holiday</figcaption></figure>
       <figure><img src="assets/screenshot-synthwave-84.png" alt="Illustration of a Finder window themed with Synthwave '84 next to the HyperIcon menu bar panel" loading="lazy"><figcaption>Synthwave '84</figcaption></figure>
-      <figure><img src="assets/screenshot-scifi-hud.png" alt="Illustration of a Finder window themed with Sci-Fi HUD" loading="lazy"><figcaption>Sci-Fi HUD</figcaption></figure>
-      <figure><img src="assets/screenshot-winter-holiday.png" alt="Illustration of a Finder window themed with Winter Holiday" loading="lazy"><figcaption>Winter Holiday</figcaption></figure>
-      <figure><img src="assets/screenshot-nineties-desktop.png" alt="Illustration of a Finder window themed with Nineties Desktop" loading="lazy"><figcaption>Nineties Desktop</figcaption></figure>
     </div>
   </section>
 
@@ -317,12 +316,11 @@ bash restore-icons.sh</pre>
   data.themes.forEach(function (t) {
     if (!cards) { picker.appendChild(el('h4', '', 'THEMES')); cards = el('div', 'cards'); picker.appendChild(cards); }
     var c = el('button', 'card'), thumb = el('div', 'thumb');
-    thumb.style.background = t.background;
     ['folder', 'git', 'images', 'music'].forEach(function (cat) { thumb.appendChild(icon(cat, t.id)); });
     c.appendChild(thumb); c.appendChild(el('span', '', t.name)); c.type = 'button'; c.dataset.id = t.id; cards.appendChild(c); buttons.push(c);
 
     var g = el('button', 'theme'), strip = el('div', 'strip'), meta = el('div', 'meta');
-    g.type = 'button'; g.dataset.id = t.id; g.style.setProperty('--accent-own', t.accent); strip.style.background = t.background;
+    g.type = 'button'; g.dataset.id = t.id;
     ['git', 'documents', 'code', 'video'].forEach(function (cat) { strip.appendChild(icon(cat, t.id)); });
     meta.appendChild(el('small', '', t.group)); meta.appendChild(el('h3', '', t.name)); meta.appendChild(el('p', '', t.description));
     g.appendChild(strip); g.appendChild(meta); gallery.appendChild(g); buttons.push(g);
@@ -331,7 +329,7 @@ bash restore-icons.sh</pre>
   function select(id, scroll) {
     var t = data.themes.filter(function (x) { return x.id === id; })[0] || data.themes[0];
     var root = document.documentElement.style;
-    root.setProperty('--sprite', sprite(t.id)); root.setProperty('--accent', t.accent); root.setProperty('--scene', t.background === '#fff0f5' || t.background === '#f6ead6' || t.background === '#e9f2fb' || t.background === '#dcdcdc' ? '#1a1c28' : t.background);
+    root.setProperty('--sprite', sprite(t.id));
     document.body.classList.toggle('pixel', t.id === '8-bit-pixel');
     document.getElementById('active-name').textContent = t.name;
     buttons.forEach(function (b) { b.setAttribute('aria-pressed', b.dataset.id === t.id ? 'true' : 'false'); });
@@ -342,7 +340,7 @@ bash restore-icons.sh</pre>
 
   var initial = new URLSearchParams(location.search).get('theme');
   if (!initial) { try { initial = localStorage.getItem('hypericon-theme'); } catch (e) {} }
-  select(initial || 'synthwave-84', false);
+  select(initial || 'halloween', false);
 })();
 </script>
 </body>

@@ -1,6 +1,6 @@
 # Making a theme
 
-A theme is a folder containing a manifest and one PNG per folder type.
+A theme is a folder containing a manifest and one PNG per folder type. A good theme is more than a recolour: the bundled ones redraw the folder as something from their world (a pumpkin, a gift, a cassette) and keep a clear symbol for what is inside.
 
 ```
 my-theme/
@@ -21,8 +21,7 @@ Put the folder in `~/Library/Application Support/HyperIcon/Themes/` (Settings â†
   "id": "my-theme",
   "name": "My Theme",
   "group": "Custom",
-  "description": "One line shown as a tooltip.",
-  "accent": "#ff62a6"
+  "description": "One line shown as a tooltip."
 }
 ```
 
@@ -50,7 +49,7 @@ The full list is also in [`Themes/categories.json`](../Themes/categories.json).
 
 Bundled themes are generated, not drawn by hand. In [`tools/icongen/gen.py`](../tools/icongen/gen.py):
 
-1. Write a function that returns the SVG for one category by calling `compose(...)` with your folder colours, decorations and glyph colour. The existing themes are short examples.
+1. Write a function that returns the SVG for one category by calling `compose(...)` with your folder silhouette, what it is built from, and how the symbol sits on it. The existing themes are short examples.
 2. Add an entry to `THEMES`.
 3. Rebuild and check:
 

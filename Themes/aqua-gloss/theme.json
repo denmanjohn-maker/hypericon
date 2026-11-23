@@ -2,10 +2,8 @@
   "id": "aqua-gloss",
   "name": "Aqua Gloss",
   "group": "OS Classics",
-  "description": "Glossy pinstriped blue from the early 2000s.",
-  "accent": "#2380e8",
-  "background": "#e9f2fb",
-  "version": 1,
+  "description": "Glossy pinstriped folders from the early 2000s.",
+  "version": 2,
   "author": "HyperIcon",
   "categories": [
     "folder",
