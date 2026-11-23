@@ -265,7 +265,7 @@ bash restore-icons.sh</pre>
     <div class="faq">
       <details><summary>Which folders does HyperIcon change?</summary><p>Folders in your home folder, four levels deep by default. It skips Library, hidden folders, application bundles and dependency folders such as <code>node_modules</code>. You can change the depth and exclude any folder in Settings.</p></details>
       <details><summary>Will it clutter my Git repositories?</summary><p>No. A repository gets one icon on its top folder and nothing inside it is touched. HyperIcon also adds the hidden icon file to that repository's local <code>.git/info/exclude</code>, so it never appears in <code>git status</code>. That line is removed when you restore.</p></details>
-      <details><summary>Does it upload anything?</summary><p>No. HyperIcon only reads file names on your Mac to choose an icon. The only network request it makes is checking GitHub for a new version.</p></details>
+      <details><summary>Does it upload anything?</summary><p>No. HyperIcon only reads file names on your Mac to choose an icon. It makes no network requests at all.</p></details>
       <details><summary>Can I make my own theme?</summary><p>Yes. A theme is a folder of PNG files and a small <code>theme.json</code>. The <a href="https://github.com/denmanjohn-maker/hypericon/blob/main/docs/THEMES.md">theme guide</a> explains the format.</p></details>
       <details><summary>How do I uninstall it?</summary><p>Choose Restore Original Icons from the menu, quit HyperIcon, and move it to the Trash.</p></details>
     </div>

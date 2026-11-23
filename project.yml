@@ -11,9 +11,6 @@ configFiles:
 packages:
   HyperIconCore:
     path: Core
-  Sparkle:
-    url: https://github.com/sparkle-project/Sparkle
-    from: 2.6.4
 targets:
   HyperIcon:
     type: application
@@ -27,8 +24,6 @@ targets:
     dependencies:
       - package: HyperIconCore
         product: HyperIconCore
-      - package: Sparkle
-        product: Sparkle
     settings:
       base:
         INFOPLIST_FILE: App/Info.plist
