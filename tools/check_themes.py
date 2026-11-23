@@ -8,7 +8,39 @@ import sys
 ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "Themes")
 categories = [c["id"] for c in json.load(open(os.path.join(ROOT, "categories.json")))]
 errors = []
-themes = sorted(d for d in os.listdir(ROOT) if os.path.isdir(os.path.join(ROOT, d)))
+
+
+def edges_transparent(path):
+    """Artwork is drawn over HyperIcon's own folder, so its outer border must be empty."""
+    try:
+        from PIL import Image
+    except ImportError:
+        return True
+    alpha = Image.open(path).convert("RGBA").getchannel("A")
+    w, h = alpha.size
+    band = 40
+    for box in ((0, 0, w, band), (0, h - band, w, h), (0, 0, band, h), (w - band, 0, w, h)):
+        if alpha.crop(box).getbbox():
+            return False
+    return True
+themes = sorted(d for d in os.listdir(ROOT) if os.path.isdir(os.path.join(ROOT, d)) and not d.startswith("_"))
+BASE_COLOURS = ["blue", "gray", "green", "purple", "yellow", "red", "orange"]
+
+
+def png_info(path):
+    with open(path, "rb") as f:
+        header = f.read(24)
+    if header[:8] != b"\x89PNG\r\n\x1a\n":
+        return None
+    return struct.unpack(">II", header[16:24])
+
+
+for colour in BASE_COLOURS:
+    path = os.path.join(ROOT, "_base", f"{colour}.png")
+    if not os.path.exists(path):
+        errors.append(f"_base: missing {colour}.png")
+    elif png_info(path) != (512, 512):
+        errors.append(f"_base: {colour}.png is not a 512x512 PNG")
 
 for theme in themes:
     base = os.path.join(ROOT, theme)
@@ -27,12 +59,13 @@ for theme in themes:
         if not os.path.exists(path):
             errors.append(f"{theme}: missing {name}.png")
             continue
-        with open(path, "rb") as f:
-            header = f.read(24)
-        if header[:8] != b"\x89PNG\r\n\x1a\n":
+        size = png_info(path)
+        if size is None:
             errors.append(f"{theme}: {name}.png is not a PNG")
-        elif name != "preview" and struct.unpack(">II", header[16:24]) != (512, 512):
+        elif name != "preview" and size != (512, 512):
             errors.append(f"{theme}: {name}.png is not 512x512")
+        elif name != "preview" and not edges_transparent(path):
+            errors.append(f"{theme}: {name}.png is not transparent at the edges (artwork only, no folder or background)")
 
 if errors:
     print("\n".join(errors))

@@ -14,6 +14,14 @@ struct SettingsView: View {
                 Stepper("Theme folders up to \(model.preferences.maxDepth) levels below your home folder",
                         value: Binding(get: { model.preferences.maxDepth }, set: { model.setMaxDepth($0) }), in: 1...8)
             }
+            Section("Colour") {
+                Toggle("Use each folder's tag colour", isOn: Binding(get: { model.preferences.matchTagColor },
+                                                                     set: { model.setMatchTagColor($0) }))
+                Text("To change a folder's colour, right-click it in Finder and choose a tag colour. "
+                     + "Untagged folders are blue. Turn this off to make every folder blue.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
             Section("Icons") {
                 Toggle("Replace icons I set myself", isOn: Binding(get: { model.preferences.overrideCustomIcons },
                                                                     set: { model.setOverrideCustomIcons($0) }))

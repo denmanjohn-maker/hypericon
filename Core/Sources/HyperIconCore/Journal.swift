@@ -9,14 +9,18 @@ public struct JournalEntry: Codable, Equatable, Sendable {
     public var backup: String?
     /// True if HyperIcon added the ignore lines to this repository's `.git/info/exclude`.
     public var gitExclude: Bool
+    /// The folder colour the current icon was drawn in.
+    public var color: FolderColor?
     public var date: Date
 
-    public init(path: String, category: FolderCategory, themeID: String, backup: String? = nil, gitExclude: Bool = false, date: Date = Date()) {
+    public init(path: String, category: FolderCategory, themeID: String, backup: String? = nil, gitExclude: Bool = false,
+                color: FolderColor? = nil, date: Date = Date()) {
         self.path = path
         self.category = category
         self.themeID = themeID
         self.backup = backup
         self.gitExclude = gitExclude
+        self.color = color
         self.date = date
     }
 }

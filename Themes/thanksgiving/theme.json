@@ -2,8 +2,9 @@
   "id": "thanksgiving",
   "name": "Thanksgiving",
   "group": "Holidays",
-  "description": "A turkey's feather fan and a pilgrim buckle on every folder.",
-  "version": 2,
+  "description": "A turkey's feather fan behind a pilgrim buckle.",
+  "version": 3,
+  "format": "artwork",
   "author": "HyperIcon",
   "categories": [
     "folder",

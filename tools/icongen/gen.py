@@ -1,10 +1,13 @@
 #!/usr/bin/env python3
 """HyperIcon icon generator.
 
-Builds every theme x category icon as SVG, renders to 512px PNG with headless Chromium
-(tools/icongen/render.js), post-processes, and writes Themes/<id>/{theme.json,preview.png,*.png}.
+Themes carry no folder and no colour. For each theme x category this renders a transparent 512 px
+artwork layer (a themed object carrying the content symbol) that the app draws on top of a plain
+folder in the colour of the folder's Finder tag. The plain folders, one per tag colour, are rendered
+to Themes/_base/. Rendering uses headless Chromium (tools/icongen/render.js).
 
-Usage: python3 tools/icongen/gen.py [theme-id ...]
+Usage: python3 tools/icongen/gen.py [theme-id ...]     (base folders are always rebuilt)
+       python3 tools/icongen/gen.py appicon
 """
 import json
 import os
@@ -12,7 +15,7 @@ import subprocess
 import sys
 import tempfile
 
-from PIL import Image
+from PIL import Image, ImageColor
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from glyphs import CATEGORIES, GLYPHS, LABELS  # noqa: E402
@@ -108,274 +111,244 @@ def compose(cat, *, shape="round", back, front, defs="", under="", over="", top=
 HEART = "M0 6C0-2 10-2 10 4C10-2 20-2 20 6C20 13 12 17 10 22C8 17 0 13 0 6Z"
 LEAF = "M0 0C14-22 44-22 58 0C44 22 14 22 0 0Z"
 
+# ---------------------------------------------------------------- base folders
+# Plain macOS-style folders, one per Finder tag colour. "blue" is also used for untagged folders.
+# Keys match FolderColor raw values in Core/Sources/HyperIconCore/FolderColor.swift.
 
-def dots(points, fill="#fff"):
-    return "".join(f'<circle cx="{x}" cy="{y}" r="{r}" fill="{fill}" opacity="{o}"/>' for x, y, r, o in points)
+BASE_COLORS = {
+    "blue": "#3f9cf0",
+    "gray": "#9a9aa2",
+    "green": "#3cc35c",
+    "purple": "#b05ad8",
+    "yellow": "#f5c624",
+    "red": "#f0504a",
+    "orange": "#ff9a2e",
+}
+BACK = SHAPES["round"][0]
+FRONT = SHAPES["round"][1]
 
 
-# ---------------------------------------------------------------- themes
-# Each theme builds its own folder: the silhouette, what it is made of, and how symbols sit on it.
+def _mix(hex_colour, other, t):
+    a, b = ImageColor.getrgb(hex_colour), ImageColor.getrgb(other)
+    return "#%02x%02x%02x" % tuple(round(x + (y - x) * t) for x, y in zip(a, b))
 
-ROUND, SHARP, CHAMFER = SHAPES["round"], SHAPES["sharp"], SHAPES["chamfer"]
+
+def base_folder(colour):
+    c = BASE_COLORS[colour]
+    return (f'<svg xmlns="http://www.w3.org/2000/svg" width="{SIZE}" height="{SIZE}" viewBox="0 0 {SIZE} {SIZE}"><defs>{FILTERS}'
+            + lin("f", [(0, _mix(c, "#ffffff", .32)), (1, _mix(c, "#ffffff", .06))])
+            + lin("b", [(0, _mix(c, "#000000", .05)), (1, _mix(c, "#000000", .22))])
+            + f'</defs><g filter="url(#fshadow)"><path d="{BACK}" fill="url(#b)"/>'
+            f'<path d="{FRONT}" fill="url(#f)"/></g>'
+            f'<path d="M40 210Q40 180 68 180H444Q472 180 472 210" fill="none" stroke="#fff" stroke-opacity=".5" stroke-width="3"/>'
+            '</svg>')
+
+
+# ---------------------------------------------------------------- artwork
+# Each theme draws one object from its world, centred on the folder's front, carrying the symbol.
+# No folder and no background: everything outside the object stays transparent.
+
+CX, CY = 256, 312          # centre of the folder front
+
+
+def art(cat, obj, *, glyph, gcenter=(CX, CY), gsize=96, gfilter=None, defs="", top="", shadow=True):
+    gx, gy = gcenter[0] - gsize / 2, gcenter[1] - gsize / 2
+    gf = f' filter="url(#{gfilter})"' if gfilter else ""
+    g = ""
+    if GLYPHS[cat]:
+        g = (f'<mask id="gm" maskUnits="userSpaceOnUse" x="0" y="0" width="{SIZE}" height="{SIZE}">'
+             f'<g transform="translate({gx} {gy}) scale({gsize / 100})">{GLYPHS[cat]}</g></mask>'
+             f'<g{gf}><rect width="{SIZE}" height="{SIZE}" fill="{glyph}" mask="url(#gm)"/></g>')
+    sh = ' filter="url(#oshadow)"' if shadow else ""
+    return (f'<svg xmlns="http://www.w3.org/2000/svg" width="{SIZE}" height="{SIZE}" viewBox="0 0 {SIZE} {SIZE}">'
+            f'<defs>{FILTERS}<filter id="oshadow" x="-20%" y="-20%" width="140%" height="150%">'
+            '<feDropShadow dx="0" dy="6" stdDeviation="6" flood-color="#000" flood-opacity=".35"/></filter>'
+            f'{defs}</defs><g{sh}>{obj}</g>{g}{top}</svg>')
 
 
 def halloween(cat):
-    """A jack-o'-lantern: ribbed pumpkin, stem and vine on the tab, symbols carved and lit from inside."""
-    back = "M40 170Q40 118 92 118H190Q212 118 224 132L240 150H420Q472 150 472 202V384Q472 432 424 432H88Q40 432 40 384Z"
-    front = "M40 236Q40 178 98 178H414Q472 178 472 236V378Q472 436 414 436H98Q40 436 40 378Z"
-    ribs = "".join(f'<ellipse cx="256" cy="307" rx="{rx}" ry="150" fill="none" stroke="#c9560a" stroke-width="5" opacity=".75"/>'
-                   for rx in (58, 128, 196))
-    shine = '<ellipse cx="150" cy="232" rx="60" ry="22" fill="#ffd08a" opacity=".35" transform="rotate(-18 150 232)"/>'
-    stem = ('<path d="M96 126q-10-44 26-58l18 16q-18 12-10 42z" fill="#5d7a2a"/>'
-            '<path d="M108 116q-4-26 14-38" fill="none" stroke="#3f5a1a" stroke-width="4" stroke-linecap="round"/>'
-            '<path d="M134 104c28-34 70 4 46 26c-16 14-34-6-18-18" fill="none" stroke="#5d7a2a" stroke-width="6" stroke-linecap="round"/>'
-            '<path d="M178 86c14-18 40-8 34 12c-14-2-26-4-34-12z" fill="#6f9433"/>')
-    grin = ('<path d="M112 380 144 400 172 380 200 400 228 380 256 400 284 380 312 400 340 380 368 400 400 380Q256 452 112 380Z" '
-            'fill="url(#lit)" stroke="#6b2a00" stroke-width="7" stroke-linejoin="round"/>')
+    """A jack-o'-lantern with the symbol carved out and lit from inside."""
+    body = ('<path d="M256 226C204 214 140 230 136 300C132 372 196 404 256 400C316 404 380 372 376 300C372 230 308 214 256 226Z" fill="url(#pk)"/>'
+            '<path d="M256 228C222 234 206 290 212 340C216 376 236 398 256 400C276 398 296 376 300 340C306 290 290 234 256 228Z" fill="none" stroke="#c4530a" stroke-width="5"/>'
+            '<path d="M200 232C166 252 154 300 162 344M312 232C346 252 358 300 350 344" fill="none" stroke="#c4530a" stroke-width="5"/>'
+            '<ellipse cx="196" cy="262" rx="26" ry="11" fill="#ffd9a0" opacity=".45" transform="rotate(-25 196 262)"/>'
+            '<path d="M248 230C244 212 246 196 256 186L270 190C262 200 262 214 266 228Z" fill="#5f7d2b"/>'
+            '<path d="M268 196C292 176 322 192 312 210C302 222 288 210 294 202" fill="none" stroke="#5f7d2b" stroke-width="5" stroke-linecap="round"/>')
     face = ""
     if cat == "folder":
-        face = ('<g fill="url(#lit)" stroke="#6b2a00" stroke-width="7" stroke-linejoin="round">'
-                '<path d="M150 300 196 228 232 300Z"/><path d="M280 300 316 228 362 300Z"/><path d="M256 312 276 348H236Z"/></g>')
-    return compose(
-        cat, shape=(back, front), back='fill="#b5480a"', front='fill="url(#f)"',
-        defs=lin("f", [(0, "#ff9a2b"), (1, "#e2630c")])
-        + '<radialGradient id="lit" cx=".5" cy=".6" r=".7"><stop offset="0" stop-color="#fff6b0"/><stop offset="1" stop-color="#ffb21a"/></radialGradient>',
-        over=ribs + shine, mid=grin + face, top=stem, glyph="url(#lit)", gfilter="carve", gcenter=(256, 286), gsize=140)
+        face = ('<g fill="url(#lit)" stroke="#6b2a00" stroke-width="5" stroke-linejoin="round">'
+                '<path d="M196 300 220 262 244 300Z"/><path d="M268 300 292 262 316 300Z"/>'
+                '<path d="M196 336 214 348 232 336 250 350 268 336 286 350 304 336 318 344Q256 392 196 336Z"/></g>')
+    return art(cat, body + face, glyph="url(#lit)", gfilter="carve", gcenter=(256, 318), gsize=92,
+               defs=lin("pk", [(0, "#ffa23a"), (1, "#e35f0d")])
+               + '<radialGradient id="lit" cx=".5" cy=".6" r=".7"><stop offset="0" stop-color="#fff6b0"/><stop offset="1" stop-color="#ffb21a"/></radialGradient>')
 
 
 def winter(cat):
-    """A wrapped gift: ribbon and bow, snow on the lid, symbols printed on a gift tag."""
-    paper = "".join(f'<circle cx="{x}" cy="{y}" r="5" fill="#fff" opacity=".22"/>'
-                    for y in range(200, 440, 34) for x in range(58 + (y // 34 % 2) * 20, 472, 40))
-    ribbon = ('<rect x="88" y="178" width="46" height="258" fill="#f2c94c"/>'
-              '<rect x="88" y="178" width="8" height="258" fill="#fbe38d"/><rect x="126" y="178" width="8" height="258" fill="#c99a1e"/>')
-    bow = ('<g transform="translate(111 150)"><path d="M0 0C-26-44-78-46-72-8C-68 22-22 14 0 0Z" fill="#f2c94c"/>'
-           '<path d="M0 0C26-44 78-46 72-8C68 22 22 14 0 0Z" fill="#e5b62f"/>'
-           '<path d="M-6 6-34 62-14 54-4 74 6 14Z" fill="#e5b62f"/><path d="M6 6 40 56 20 54 14 74-2 14Z" fill="#f2c94c"/>'
-           '<circle r="15" fill="#fbe38d" stroke="#c99a1e" stroke-width="3"/></g>')
-    tag = ""
-    if GLYPHS[cat]:
-        tag = ('<path d="M140 168C170 196 176 214 196 236" fill="none" stroke="#f6efe0" stroke-width="3"/>'
-               '<g filter="url(#gshadow)"><path d="M214 216H418Q434 216 434 232V396Q434 412 418 412H214Q198 412 198 396V264L190 240Q196 216 214 216Z" fill="#fff7e6"/></g>'
-               '<circle cx="212" cy="238" r="8" fill="#b31d27"/>'
-               '<rect x="212" y="226" width="208" height="176" rx="10" fill="none" stroke="#2f7d4f" stroke-width="3" stroke-dasharray="2 9" stroke-linecap="round"/>')
-    return compose(
-        cat, shape=ROUND, back='fill="#8a1620"', front='fill="url(#f)"',
-        defs=lin("f", [(0, "#e2434b"), (1, "#b71f29")]),
-        under='<path d="M58 124H198" stroke="#fff" stroke-width="16" stroke-linecap="round"/>',
-        over=paper + ribbon + scallops([24, 32, 20, 34, 26, 18, 32, 22, 28, 20], y0=206), mid=tag, top=bow,
-        glyph="#1f6b40", gfilter=None, gcenter=(320, 316), gsize=132)
-
-
-def valentine(cat):
-    """A love letter: envelope with a pointed flap and a heart wax seal, symbols stamped on the paper."""
-    flap = ('<path d="M40 178H472L256 300Z" fill="#fff" opacity=".55"/>'
-            '<path d="M40 206Q40 178 68 178H444Q472 178 472 206L256 304Z" fill="#ffd3df"/>'
-            '<path d="M44 192 256 304 468 192" fill="none" stroke="#e39ab0" stroke-width="4" stroke-linejoin="round"/>'
-            '<path d="M40 436 190 330M472 436 322 330" stroke="#efb4c5" stroke-width="3"/>')
-    seal = (f'<g transform="translate(256 262)" filter="url(#gshadow)"><path d="{HEART}" transform="translate(-33 -34) scale(3.3)" fill="#c2183f"/>'
-            f'<path d="{HEART}" transform="translate(-21 -22) scale(2.1)" fill="none" stroke="#e8627f" stroke-width="1.2"/></g>')
-    letter = '<path d="M70 150H442V190H70Z" fill="#fffdf8"/><path d="M92 164H300M92 178H240" stroke="#f1b8c6" stroke-width="4" stroke-linecap="round"/>'
-    return compose(
-        cat, shape=ROUND, back='fill="#d9416f"', front='fill="url(#f)"',
-        defs=lin("f", [(0, "#fff0f4"), (1, "#ffdbe5")]),
-        under=letter, over=flap, mid=seal, glyph="#cf2857", gfilter=None, gcenter=(256, 370), gsize=118)
-
-
-def harvest(cat):
-    """A wooden crate: planks, corner posts and nails, a rope handle, symbols branded into the wood."""
-    planks = ""
-    for i, y in enumerate((178, 266, 354)):
-        h = 82
-        planks += f'<rect x="40" y="{y}" width="432" height="{h}" fill="{("#d39a58", "#c88d4c", "#d6a05f")[i]}"/>'
-        planks += f'<rect x="40" y="{y + h}" width="432" height="6" fill="#6f4520"/>'
-        planks += "".join(f'<path d="M{x} {y + 14 + (j * 23) % 50}q40 {8 if j % 2 else -8} 90 0" fill="none" stroke="#a8713a" stroke-width="3" opacity=".6"/>'
-                          for j, x in enumerate((92, 214, 330)))
-    posts = "".join(f'<rect x="{x}" y="178" width="40" height="258" fill="#b27a3d"/>'
-                    + "".join(f'<circle cx="{x + 20}" cy="{y}" r="6" fill="#5b3a1c"/><circle cx="{x + 18}" cy="{y - 2}" r="2" fill="#e8c493"/>'
-                              for y in (220, 308, 396)) for x in (40, 432))
-    rope = ('<path d="M70 132C90 78 172 78 190 132" fill="none" stroke="#b8935a" stroke-width="14" stroke-linecap="round"/>'
-            '<path d="M70 132C90 78 172 78 190 132" fill="none" stroke="#e6cf9c" stroke-width="14" stroke-linecap="butt" stroke-dasharray="7 9"/>')
-    return compose(
-        cat, shape=SHARP, back='fill="#9a6631" stroke="#5b3a1c" stroke-width="5"',
-        front='fill="#c88d4c" stroke="#5b3a1c" stroke-width="5"',
-        over=planks + posts, top=rope, glyph="#4a2409", gfilter="burn", gcenter=(256, 307), gsize=138)
+    """A gift tag tied with string and a sprig of holly; the symbol is printed on the tag."""
+    tag = ('<g transform="rotate(-8 256 316)">'
+           '<path d="M174 232H360Q376 232 376 248V392Q376 408 360 408H174Q158 408 158 392V284L140 266V256Q150 232 174 232Z" fill="#fff8ea"/>'
+           '<circle cx="164" cy="262" r="8" fill="#c9bea6"/><circle cx="164" cy="262" r="4.5" fill="#e9e0cc"/>'
+           '<rect x="174" y="246" width="190" height="150" rx="8" fill="none" stroke="#c0392b" stroke-width="3" stroke-dasharray="1 8" stroke-linecap="round"/></g>')
+    string = '<path d="M162 258C128 236 118 206 136 184" fill="none" stroke="#b3261e" stroke-width="4" stroke-linecap="round"/>'
+    holly = ('<g transform="translate(330 226) rotate(20)">'
+             f'<path d="{LEAF}" transform="translate(-58 0) scale(.9)" fill="#1f7a45"/><path d="{LEAF}" transform="rotate(-50) scale(.9)" fill="#2a8f53"/>'
+             '<circle cx="-4" cy="4" r="9" fill="#d62b2b"/><circle cx="10" cy="-6" r="9" fill="#e23b3b"/><circle cx="12" cy="12" r="8" fill="#c21f1f"/></g>')
+    return art(cat, tag + string, glyph="#1f6b40", gcenter=(268, 322), gsize=100, top=holly)
 
 
 def thanksgiving(cat):
-    """A turkey's tail-feather fan behind the folder, with a pilgrim hat band and buckle holding the symbol."""
+    """A turkey's feather fan behind a pilgrim buckle; the symbol sits in the buckle."""
     colours = ["#8a4a1c", "#d9792b", "#b3261e", "#e8b23a", "#b3261e", "#d9792b", "#8a4a1c"]
     fan = ""
     for i, colour in enumerate(colours):
-        angle = -51 + i * 17
-        fan += (f'<g transform="rotate({angle} 256 262)"><path d="M256 262C206 200 212 84 256 18C300 84 306 200 256 262Z" fill="{colour}"/>'
-                f'<path d="M256 18C232 54 222 84 220 108Q256 86 292 108C290 84 280 54 256 18Z" fill="#fff1cf"/>'
-                f'<path d="M256 40V250" stroke="#4a2a12" stroke-width="3" opacity=".55"/></g>')
-    band = ('<rect x="40" y="262" width="432" height="92" fill="#2b1d12"/>'
-            '<rect x="40" y="262" width="432" height="6" fill="#4a3320"/><rect x="40" y="348" width="432" height="6" fill="#170e07"/>')
-    buckle = ('<g filter="url(#gshadow)"><rect x="170" y="222" width="172" height="172" rx="18" fill="url(#gold)"/></g>'
-              '<rect x="190" y="242" width="132" height="132" rx="8" fill="#2b1d12"/>'
-              '<rect x="176" y="228" width="160" height="160" rx="14" fill="none" stroke="#fff3c4" stroke-width="2" opacity=".7"/>')
-    return compose(
-        cat, shape=ROUND, pre=f'<g filter="url(#fshadow)">{fan}</g>',
-        back='fill="#5a3a1f"', front='fill="url(#f)"',
-        defs=lin("f", [(0, "#8a5a32"), (1, "#6b4222")]) + lin("gold", [(0, "#f6d568"), (1, "#c8922a")], x2=1),
-        over=band, mid=buckle, glyph="#f6d568", gfilter=None, gcenter=(256, 308), gsize=104)
+        angle = -60 + i * 20
+        fan += (f'<g transform="rotate({angle} 256 340)"><path d="M256 340C224 300 228 228 256 196C284 228 288 300 256 340Z" fill="{colour}"/>'
+                f'<path d="M256 196C242 216 236 232 236 244Q256 232 276 244C276 232 270 216 256 196Z" fill="#fff1cf"/></g>')
+    buckle = ('<rect x="186" y="262" width="140" height="132" rx="14" fill="url(#gold)"/>'
+              '<rect x="204" y="280" width="104" height="96" rx="6" fill="#2b1d12"/>'
+              '<rect x="192" y="268" width="128" height="120" rx="11" fill="none" stroke="#fff3c4" stroke-width="2" opacity=".7"/>')
+    return art(cat, fan + buckle, glyph="#f6d568", gcenter=(256, 328), gsize=74,
+               defs=lin("gold", [(0, "#f6d568"), (1, "#c8922a")], x2=1))
+
+
+def valentine(cat):
+    """A love letter closed with a large wax heart; the symbol is pressed into the wax."""
+    env = ('<rect x="146" y="238" width="220" height="150" rx="10" fill="#fff4f7"/>'
+           '<path d="M150 244 256 320 362 244" fill="none" stroke="#e7a7b9" stroke-width="4" stroke-linejoin="round"/>'
+           '<path d="M150 384 226 318M362 384 286 318" stroke="#f0c2cf" stroke-width="3"/>')
+    seal = (f'<path d="{HEART}" transform="translate(176 232) scale(8)" fill="url(#wax)"/>'
+            f'<path d="{HEART}" transform="translate(190 246) scale(6.6)" fill="none" stroke="#f17d97" stroke-width=".35"/>')
+    return art(cat, env + seal, glyph="#ffe4ea", gcenter=(256, 318), gsize=76,
+               defs=lin("wax", [(0, "#e0365d"), (1, "#a8102f")]))
+
+
+def harvest(cat):
+    """A small wooden crate panel with the symbol branded into the planks."""
+    crate = ""
+    for i, y in enumerate((232, 288, 344)):
+        crate += f'<rect x="150" y="{y}" width="212" height="54" fill="{("#d6a05f", "#cc9352", "#d39a58")[i]}"/>'
+        crate += f'<path d="M{170 + i * 22} {y + 18}q46 8 96 0M{226 - i * 14} {y + 38}q40 -6 84 0" fill="none" stroke="#a8713a" stroke-width="2.5" opacity=".6"/>'
+        crate += f'<rect x="150" y="{y + 52}" width="212" height="4" fill="#6f4520"/>'
+    crate += "".join(f'<rect x="{x}" y="228" width="26" height="176" fill="#b27a3d" stroke="#6f4520" stroke-width="2"/>'
+                     + "".join(f'<circle cx="{x + 13}" cy="{y}" r="4" fill="#5b3a1c"/>' for y in (248, 316, 384)) for x in (140, 346))
+    wheat = ('<g transform="translate(340 222) rotate(25)" fill="#e2b54c">'
+             + "".join(f'<ellipse cx="{dx}" cy="{-i * 11}" rx="5" ry="9" transform="rotate({dx * 3} {dx} {-i * 11})"/>' for i in range(5) for dx in (-6, 6))
+             + '<path d="M0 0V40" stroke="#b9892a" stroke-width="3"/></g>')
+    return art(cat, crate, glyph="#4a2409", gfilter="burn", gcenter=(256, 318), gsize=96, top=wheat)
 
 
 def scifi(cat):
-    """A hinged console panel: gunmetal plates, rivets, status lights and a holographic display."""
-    rivets = "".join(f'<circle cx="{x}" cy="{y}" r="6" fill="#8c98a6"/><circle cx="{x - 1.5}" cy="{y - 1.5}" r="2.4" fill="#dfe6ee"/>'
-                     for x, y in ((66, 204), (446, 204), (66, 410), (430, 410)))
-    hinges = "".join(f'<rect x="{x}" y="166" width="62" height="22" rx="11" fill="#9aa6b4" stroke="#39424d" stroke-width="3"/>'
-                     f'<path d="M{x + 20} 168V186M{x + 42} 168V186" stroke="#39424d" stroke-width="3"/>' for x in (96, 354))
-    screen = ('<rect x="128" y="212" width="256" height="176" rx="10" fill="#06131d" stroke="#2a3540" stroke-width="6"/>'
-              + "".join(f'<path d="M134 {y}H378" stroke="#45f0ff" stroke-width="1" opacity=".12"/>' for y in range(222, 386, 8))
-              + '<path d="M140 240V224H156M372 360V376H356" fill="none" stroke="#45f0ff" stroke-width="2.5"/>')
-    lights = "".join(f'<circle cx="{84}" cy="{y}" r="8" fill="{c}"/><circle cx="82" cy="{y - 2}" r="2.5" fill="#fff" opacity=".7"/>'
-                     for y, c in ((262, "#3ddc84"), (296, "#ffc233"), (330, "#ff5a4d")))
-    vents = "".join(f'<rect x="408" y="{y}" width="40" height="7" rx="3.5" fill="#333d48"/>' for y in (258, 276, 294, 312, 330))
-    plate = '<path d="M40 300H110M402 300H472" stroke="#4a5562" stroke-width="2"/>'
-    return compose(
-        cat, shape=CHAMFER, back='fill="#56616e" stroke="#2a323b" stroke-width="4"',
-        front='fill="url(#f)" stroke="#2a323b" stroke-width="4"',
-        defs=lin("f", [(0, "#7c8896"), (1, "#56616e")]),
-        over=plate + screen + lights + vents + rivets, top=hinges,
-        glyph="#7df7ff", gfilter="glow", gcenter=(256, 300), gsize=124)
+    """A riveted console screen with the symbol as a hologram."""
+    panel = ('<path d="M150 236 166 220H346L362 236V392L346 408H166L150 392Z" fill="url(#gm2)" stroke="#2a323b" stroke-width="3"/>'
+             '<rect x="170" y="240" width="172" height="142" rx="8" fill="#06131d" stroke="#2a3540" stroke-width="4"/>'
+             + "".join(f'<path d="M174 {y}H338" stroke="#45f0ff" stroke-width="1" opacity=".14"/>' for y in range(248, 380, 7))
+             + "".join(f'<circle cx="{x}" cy="{y}" r="4" fill="#c6cfd8"/>' for x, y in ((160, 232), (352, 232), (160, 396), (352, 396)))
+             + '<rect x="190" y="390" width="40" height="6" rx="3" fill="#3ddc84"/><rect x="236" y="390" width="20" height="6" rx="3" fill="#ffc233"/>')
+    return art(cat, panel, glyph="#7df7ff", gfilter="glow", gcenter=(256, 311), gsize=96,
+               defs=lin("gm2", [(0, "#8794a2"), (1, "#56616e")]))
 
 
 def synthwave(cat):
-    """A cassette tape: striped label, two reels and corner screws, symbols printed on the label."""
-    screws = "".join(f'<circle cx="{x}" cy="{y}" r="8" fill="#9a9aa6"/><path d="M{x - 5} {y}H{x + 5}M{x} {y - 5}V{y + 5}" stroke="#3a3a44" stroke-width="2.5"/>'
-                     for x, y in ((62, 200), (450, 200), (62, 414), (450, 414)))
-    label = ('<rect x="84" y="192" width="344" height="164" rx="12" fill="#fbf3e3"/>'
-             '<rect x="84" y="192" width="344" height="8" fill="#ffcf4a"/><rect x="84" y="200" width="344" height="8" fill="#ff8a3d"/>'
-             '<rect x="84" y="208" width="344" height="8" fill="#f0478c"/><rect x="84" y="216" width="344" height="8" fill="#8a3de0"/>'
-             '<path d="M104 338H180M332 338H408" stroke="#c9bfa8" stroke-width="3" stroke-linecap="round"/>')
-    reel = ('<circle r="20" fill="#f4f4f6"/><circle r="7" fill="#24242b"/>'
-            + "".join(f'<rect x="-3" y="-18" width="6" height="9" fill="#24242b" transform="rotate({a})"/>' for a in range(0, 360, 60)))
-    window = ('<rect x="160" y="366" width="192" height="54" rx="14" fill="#15151a" stroke="#5a5a66" stroke-width="3"/>'
-              f'<g transform="translate(200 393)">{reel}</g><g transform="translate(312 393)">{reel}</g>'
-              '<rect x="234" y="378" width="44" height="30" rx="4" fill="#3b2a22"/>')
-    return compose(
-        cat, shape=ROUND, back='fill="#1e1e25"', front='fill="url(#f)"',
-        defs=lin("f", [(0, "#3b3b46"), (1, "#2a2a33")]),
-        under='<path d="M60 134H204" stroke="#55555f" stroke-width="6" stroke-linecap="round"/>',
-        over=label + window + screws, glyph="#2a2a33", gfilter=None, gcenter=(256, 286), gsize=106)
+    """A cassette tape; the symbol is printed on its striped label."""
+    reel = ('<circle r="13" fill="#f4f4f6"/><circle r="5" fill="#24242b"/>'
+            + "".join(f'<rect x="-2" y="-12" width="4" height="6" fill="#24242b" transform="rotate({a})"/>' for a in range(0, 360, 60)))
+    tape = ('<rect x="128" y="236" width="256" height="166" rx="14" fill="#2c2c35"/>'
+            '<rect x="144" y="248" width="224" height="104" rx="8" fill="#fbf3e3"/>'
+            + "".join(f'<rect x="144" y="{248 + i * 6}" width="224" height="6" fill="{c}"/>' for i, c in enumerate(("#ffcf4a", "#ff8a3d", "#f0478c", "#8a3de0")))
+            + '<path d="M184 362H328L340 402H172Z" fill="#3a3a44"/>'
+            '<rect x="200" y="366" width="112" height="26" rx="13" fill="#15151a"/>'
+            f'<g transform="translate(222 379)">{reel}</g><g transform="translate(290 379)">{reel}</g>'
+            + "".join(f'<circle cx="{x}" cy="{y}" r="4" fill="#8c8c98"/>' for x, y in ((140, 248), (372, 248), (140, 390), (372, 390))))
+    return art(cat, tape, glyph="#2a2a33", gcenter=(256, 306), gsize=66)
 
 
 def neon(cat):
-    """An arcade cabinet: lit marquee, screen, joystick and buttons, symbols drawn in neon on the screen."""
-    marquee = ('<path d="M52 128 66 124H192L212 146H52Z" fill="#ffe36b"/>'
-               f'<text x="126" y="143" {MONO} font-size="17" text-anchor="middle" fill="#b3261e" letter-spacing="3">ARCADE</text>')
-    screen = ('<rect x="86" y="196" width="340" height="168" rx="16" fill="#3a3f58"/>'
-              '<rect x="100" y="208" width="312" height="144" rx="22" fill="#05060c"/>'
-              '<path d="M118 222Q256 206 394 222" fill="none" stroke="#fff" stroke-width="3" opacity=".12"/>')
-    panel = ('<path d="M40 378H472V414L450 436H40Z" fill="#30354c"/><path d="M40 378H472" stroke="#565d80" stroke-width="4"/>'
-             '<rect x="143" y="382" width="8" height="26" fill="#c9ccd6"/><circle cx="147" cy="380" r="14" fill="#e23b3b"/>'
-             '<circle cx="143" cy="376" r="4" fill="#fff" opacity=".6"/><ellipse cx="147" cy="412" rx="20" ry="6" fill="#161927"/>'
-             + "".join(f'<circle cx="{x}" cy="406" r="13" fill="#161927"/><circle cx="{x}" cy="403" r="11" fill="{c}"/>'
-                       for x, c in ((292, "#ffd23f"), (334, "#3ddc84"), (376, "#4aa8ff"))))
-    return compose(
-        cat, shape=CHAMFER, back='fill="#1c2033" stroke="#0c0e18" stroke-width="4"',
-        front='fill="#232842" stroke="#0c0e18" stroke-width="4"',
-        under=marquee, over=screen + panel, glyph="#ff4fd8", gfilter="neon", gcenter=(256, 280), gsize=118)
+    """An arcade cabinet front: a lit marquee over a dark screen with the symbol in neon."""
+    cab = ('<path d="M164 222H348L340 404H172Z" fill="#232842"/>'
+           '<rect x="164" y="222" width="184" height="26" rx="4" fill="#ffe36b"/>'
+           f'<text x="256" y="241" {MONO} font-size="15" text-anchor="middle" fill="#b3261e" letter-spacing="3">ARCADE</text>'
+           '<rect x="180" y="256" width="152" height="118" rx="14" fill="#05060c" stroke="#3a3f58" stroke-width="6"/>'
+           '<circle cx="204" cy="390" r="7" fill="#e23b3b"/><circle cx="292" cy="390" r="6" fill="#ffd23f"/><circle cx="312" cy="390" r="6" fill="#3ddc84"/>')
+    return art(cat, cab, glyph="#ff4fd8", gfilter="neon", gcenter=(256, 315), gsize=88)
 
 
 def crt(cat):
-    """A beige terminal: plastic bezel, curved green screen and a prompt, symbols in glowing phosphor."""
-    screen = ('<rect x="70" y="198" width="372" height="192" rx="26" fill="#a9a08a"/>'
-              '<rect x="82" y="208" width="348" height="172" rx="34" fill="#021a06"/>'
-              '<rect x="82" y="208" width="348" height="172" rx="34" fill="url(#sl)"/>'
-              '<path d="M104 226Q256 208 408 226" fill="none" stroke="#fff" stroke-width="3" opacity=".1"/>'
-              f'<text x="104" y="366" {MONO} font-size="20" fill="#35ff6a" filter="url(#softglow)">&gt; _</text>')
-    trim = ('<circle cx="424" cy="412" r="7" fill="#3ddc84"/><rect x="366" y="406" width="40" height="12" rx="3" fill="#b8ae97"/>'
-            + "".join(f'<rect x="{x}" y="402" width="5" height="20" rx="2" fill="#a9a08a"/>' for x in range(74, 170, 12)))
-    return compose(
-        cat, shape=ROUND, back='fill="#bdb49d"', front='fill="url(#f)"',
-        defs=lin("f", [(0, "#e4dcc8"), (1, "#cfc6af")])
-        + '<pattern id="sl" width="6" height="6" patternUnits="userSpaceOnUse"><rect width="6" height="2" fill="#35ff6a" opacity=".1"/></pattern>',
-        under='<path d="M60 132H204" stroke="#d8d0bb" stroke-width="5" stroke-linecap="round"/>',
-        over=screen + trim, glyph="#35ff6a", gfilter="glow", gcenter=(256, 288), gsize=118)
+    """A small beige terminal with the symbol glowing on its green screen."""
+    term = ('<rect x="150" y="224" width="212" height="166" rx="18" fill="url(#bz)"/>'
+            '<rect x="166" y="238" width="180" height="128" rx="22" fill="#021a06"/>'
+            '<rect x="166" y="238" width="180" height="128" rx="22" fill="url(#sl)"/>'
+            '<path d="M190 380H322L334 404H178Z" fill="#c9c0aa"/>'
+            '<circle cx="340" cy="378" r="4" fill="#3ddc84"/>')
+    return art(cat, term, glyph="#35ff6a", gfilter="glow", gcenter=(256, 302), gsize=84,
+               defs=lin("bz", [(0, "#e8e0cc"), (1, "#c9c0aa")])
+               + '<pattern id="sl" width="5" height="5" patternUnits="userSpaceOnUse"><rect width="5" height="2" fill="#35ff6a" opacity=".1"/></pattern>')
 
 
 def pixel(cat):
-    """Chunky low-resolution pixel art."""
-    return compose(
-        cat, shape=SHARP, ffilter=None, gfilter=None,
-        back='fill="#b8641a" stroke="#2b1600" stroke-width="16" stroke-linejoin="miter"',
-        front='fill="#ffb52e" stroke="#2b1600" stroke-width="16" stroke-linejoin="miter"',
-        over='<rect x="48" y="186" width="416" height="16" fill="#ffe08a"/>'
-             '<rect x="48" y="412" width="416" height="16" fill="#d98a17"/>',
-        glyph="#2b1600", gcenter=(256, 308), gsize=160)
+    """A chunky pixel-art badge."""
+    badge = ('<rect x="164" y="226" width="184" height="172" fill="#ffb52e" stroke="#2b1600" stroke-width="14"/>'
+             '<rect x="171" y="233" width="170" height="12" fill="#ffe08a"/><rect x="171" y="379" width="170" height="12" fill="#d98a17"/>')
+    return art(cat, badge, glyph="#2b1600", gcenter=(256, 312), gsize=110, shadow=False)
 
 
 def platinum(cat):
-    """A bevelled late-90s desktop folder."""
-    bevel = ('<path d="M47 428V185H466" fill="none" stroke="#fff" stroke-width="5"/>'
-             '<path d="M465 188V429H50" fill="none" stroke="#7676b4" stroke-width="5"/>')
-    return compose(
-        cat, shape=SHARP, ffilter=None, gfilter=None,
-        back='fill="#8d8dc4" stroke="#15152b" stroke-width="5"',
-        front='fill="#bfbfee" stroke="#15152b" stroke-width="5"',
-        under='<path d="M48 126H196" stroke="#c9c9f2" stroke-width="5"/>',
-        over=bevel, glyph="#24244f", gcenter=(256, 308), gsize=148)
+    """A bevelled grey plate, late-90s desktop style."""
+    plate = ('<rect x="160" y="232" width="192" height="164" fill="#dcdcdc" stroke="#15152b" stroke-width="4"/>'
+             '<path d="M164 392V236H348" fill="none" stroke="#fff" stroke-width="5"/>'
+             '<path d="M348 238V392H166" fill="none" stroke="#8e8e9e" stroke-width="5"/>')
+    return art(cat, plate, glyph="#24244f", gcenter=(256, 314), gsize=104, shadow=False)
 
 
 def nineties(cat):
-    """A manila folder with black outlines and a hard shadow."""
-    bevel = ('<path d="M47 428V185H466" fill="none" stroke="#fff6c2" stroke-width="6"/>'
-             '<path d="M465 188V429H50" fill="none" stroke="#b78a00" stroke-width="6"/>')
-    shadow = '<g transform="translate(14 14)" opacity=".32"><path d="{BACK}"/><path d="{FRONT}"/></g>'
-    return compose(
-        cat, shape=SHARP, ffilter=None, gfilter=None, pre=shadow,
-        back='fill="#c99700" stroke="#000" stroke-width="5"',
-        front='fill="#ffd633" stroke="#000" stroke-width="5"',
-        over=bevel, glyph="#00007a", gcenter=(256, 308), gsize=148)
+    """A little window with a title bar and a hard drop shadow."""
+    win = ('<rect x="172" y="240" width="190" height="164" fill="#000" opacity=".35"/>'
+           '<rect x="158" y="226" width="190" height="164" fill="#c0c0c0" stroke="#000" stroke-width="3"/>'
+           '<rect x="164" y="232" width="178" height="22" fill="#00007a"/>'
+           '<rect x="326" y="236" width="12" height="14" fill="#c0c0c0" stroke="#000" stroke-width="1.5"/>'
+           '<rect x="164" y="258" width="178" height="126" fill="#fff" stroke="#808080" stroke-width="2"/>')
+    return art(cat, win, glyph="#000", gcenter=(253, 321), gsize=92, shadow=False)
 
 
 def aqua(cat):
-    """A glossy, pinstriped early-2000s folder with gel symbols."""
-    over = ('<rect x="40" y="178" width="432" height="258" fill="url(#ps)"/>'
-            '<ellipse cx="256" cy="186" rx="270" ry="76" fill="#fff" opacity=".42"/>'
-            '<ellipse cx="256" cy="452" rx="220" ry="44" fill="#bfe6ff" opacity=".35"/>')
-    return compose(
-        cat, shape=ROUND, back='fill="url(#b)"', front='fill="url(#f)" stroke="#0d4aa3" stroke-width="2"',
-        defs=lin("b", [(0, "#3d93ee"), (1, "#1557b8")]) + lin("f", [(0, "#8fd2ff"), (1, "#2380e8")])
-        + '<pattern id="ps" width="4" height="4" patternUnits="userSpaceOnUse"><rect width="4" height="1.4" fill="#fff" opacity=".16"/></pattern>',
-        over=over, glyph="#fff", gfilter="emboss", gcenter=(256, 314), gsize=146)
+    """A glossy white gel lozenge with a blue symbol."""
+    gel = ('<rect x="160" y="236" width="192" height="156" rx="40" fill="url(#gel)" stroke="#9ab8d8" stroke-width="2"/>'
+           '<rect x="174" y="242" width="164" height="56" rx="28" fill="#fff" opacity=".75"/>'
+           '<rect x="160" y="236" width="192" height="156" rx="40" fill="url(#ps)"/>')
+    return art(cat, gel, glyph="#1f6fd1", gfilter="emboss", gcenter=(256, 318), gsize=96,
+               defs=lin("gel", [(0, "#ffffff"), (1, "#cfe2f6")])
+               + '<pattern id="ps" width="4" height="4" patternUnits="userSpaceOnUse"><rect width="4" height="1.3" fill="#7aa9d8" opacity=".14"/></pattern>')
 
 
 THEMES = [
     dict(id="winter-holiday", name="Winter Holiday", group="Holidays", build=winter,
-         description="Folders wrapped as gifts, with ribbon, a bow and a tag."),
+         description="A gift tag with holly on every folder."),
     dict(id="halloween", name="Halloween", group="Holidays", build=halloween,
-         description="Jack-o'-lantern folders with carved, candle-lit symbols."),
+         description="Jack-o'-lanterns with the symbol carved and candle-lit."),
     dict(id="thanksgiving", name="Thanksgiving", group="Holidays", build=thanksgiving,
-         description="A turkey's feather fan and a pilgrim buckle on every folder."),
+         description="A turkey's feather fan behind a pilgrim buckle."),
     dict(id="valentine", name="Valentine", group="Holidays", build=valentine,
-         description="Love-letter envelopes sealed with a wax heart."),
+         description="Love letters sealed with a wax heart."),
     dict(id="harvest", name="Harvest", group="Holidays", build=harvest,
-         description="Wooden market crates with rope handles and branded symbols."),
+         description="Wooden crates with branded symbols and a sheaf of wheat."),
     dict(id="scifi-hud", name="Sci-Fi HUD", group="Sci-Fi", build=scifi,
-         description="Riveted console panels with holographic displays."),
+         description="Riveted console screens with holographic symbols."),
     dict(id="synthwave-84", name="Synthwave '84", group="80s", build=synthwave,
-         description="Cassette tapes with striped labels and spinning reels."),
+         description="Cassette tapes with striped labels."),
     dict(id="neon-arcade", name="Neon Arcade", group="80s", build=neon,
-         description="Arcade cabinets with a joystick, buttons and a neon screen."),
+         description="Arcade cabinets with neon symbols on the screen."),
     dict(id="green-phosphor", name="Green Phosphor CRT", group="Computer Retro", build=crt,
          description="Beige terminals with a glowing green screen."),
     dict(id="8-bit-pixel", name="8-Bit Pixel", group="Computer Retro", build=pixel,
-         description="Chunky low-resolution pixel art.", pixel=64),
+         description="Chunky low-resolution pixel badges.", pixel=64),
     dict(id="platinum-classic", name="Platinum Classic", group="OS Classics", build=platinum,
-         description="Bevelled folders in the style of late-90s desktops."),
+         description="Bevelled grey plates in the style of late-90s desktops."),
     dict(id="nineties-desktop", name="Nineties Desktop", group="OS Classics", build=nineties,
-         description="Manila folders with black outlines and hard shadows."),
+         description="Little windows with title bars and hard shadows."),
     dict(id="aqua-gloss", name="Aqua Gloss", group="OS Classics", build=aqua,
-         description="Glossy pinstriped folders from the early 2000s."),
+         description="Glossy pinstriped gel badges from the early 2000s."),
 ]
 
-# One neutral backdrop for every preview, so colour never stands in for the theme.
 PREVIEW_BG = "#30333d"
 
 
@@ -388,13 +361,20 @@ def pixelate(img, grid):
     return small.resize(img.size, Image.NEAREST)
 
 
-def contact_sheet(theme, cats, cols, cell, path):
-    from PIL import ImageColor
+def composite(theme_id, cat, colour="blue"):
+    """What the app draws: the base folder in a tag colour with the theme's artwork on top."""
+    img = Image.open(os.path.join(OUT, "_base", f"{colour}.png")).convert("RGBA")
+    img.alpha_composite(Image.open(os.path.join(OUT, theme_id, f"{cat}.png")).convert("RGBA"))
+    return img
+
+
+def contact_sheet(theme, cats, cols, cell, path, colours=None):
     rows = (len(cats) + cols - 1) // cols
     pad = cell // 8
     sheet = Image.new("RGBA", (cols * cell + pad * 2, rows * cell + pad * 2), ImageColor.getrgb(PREVIEW_BG) + (255,))
     for i, c in enumerate(cats):
-        icon = Image.open(os.path.join(OUT, theme["id"], f"{c}.png")).resize((cell, cell), Image.LANCZOS)
+        colour = colours[i % len(colours)] if colours else "blue"
+        icon = composite(theme["id"], c, colour).resize((cell, cell), Image.LANCZOS)
         sheet.alpha_composite(icon, (pad + (i % cols) * cell, pad + (i // cols) * cell))
     sheet.convert("RGB").save(path, optimize=True)
 
@@ -443,24 +423,31 @@ def app_icon():
     print("built app icon")
 
 
+def render(jobs):
+    with tempfile.TemporaryDirectory() as tmp:
+        for i, job in enumerate(jobs):
+            svg = os.path.join(tmp, f"{i}.svg")
+            with open(svg, "w") as f:
+                f.write(job.pop("svgtext"))
+            job["svg"] = svg
+        jf = os.path.join(tmp, "jobs.json")
+        with open(jf, "w") as f:
+            json.dump(jobs, f)
+        subprocess.run(["node", os.path.join(os.path.dirname(__file__), "render.js"), jf], check=True)
+
+
 def main():
     if sys.argv[1:] == ["appicon"]:
         return app_icon()
     wanted = set(sys.argv[1:])
     themes = [t for t in THEMES if not wanted or t["id"] in wanted]
-    jobs = []
-    with tempfile.TemporaryDirectory() as tmp:
-        for t in themes:
-            os.makedirs(os.path.join(OUT, t["id"]), exist_ok=True)
-            for c in CATEGORIES:
-                svg = os.path.join(tmp, f'{t["id"]}__{c}.svg')
-                with open(svg, "w") as f:
-                    f.write(t["build"](c))
-                jobs.append({"svg": svg, "png": os.path.join(OUT, t["id"], f"{c}.png"), "size": SIZE})
-        jf = os.path.join(tmp, "jobs.json")
-        with open(jf, "w") as f:
-            json.dump(jobs, f)
-        subprocess.run(["node", os.path.join(os.path.dirname(__file__), "render.js"), jf], check=True)
+
+    os.makedirs(os.path.join(OUT, "_base"), exist_ok=True)
+    jobs = [{"svgtext": base_folder(c), "png": os.path.join(OUT, "_base", f"{c}.png"), "size": SIZE} for c in BASE_COLORS]
+    for t in themes:
+        os.makedirs(os.path.join(OUT, t["id"]), exist_ok=True)
+        jobs += [{"svgtext": t["build"](c), "png": os.path.join(OUT, t["id"], f"{c}.png"), "size": SIZE} for c in CATEGORIES]
+    render(jobs)
 
     for t in themes:
         d = os.path.join(OUT, t["id"])
@@ -471,7 +458,7 @@ def main():
                 img = pixelate(img, t["pixel"])
             img.save(p, optimize=True)
         meta = {k: t[k] for k in ("id", "name", "group", "description")}
-        meta.update(version=2, author="HyperIcon", categories=CATEGORIES)
+        meta.update(version=3, format="artwork", author="HyperIcon", categories=CATEGORIES)
         with open(os.path.join(d, "theme.json"), "w") as f:
             json.dump(meta, f, indent=2)
             f.write("\n")

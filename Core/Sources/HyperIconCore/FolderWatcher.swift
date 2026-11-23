@@ -27,8 +27,9 @@ public final class FolderWatcher {
             let paths = unsafeBitCast(eventPaths, to: NSArray.self) as? [String] ?? []
             if !paths.isEmpty { watcher.handler(paths) }
         }
-        // IgnoreSelf keeps the icons we write from triggering another pass.
-        let flags = UInt32(kFSEventStreamCreateFlagUseCFTypes | kFSEventStreamCreateFlagIgnoreSelf)
+        // IgnoreSelf keeps the icons we write from triggering another pass. FileEvents reports the changed
+        // item itself, which is how a new tag colour on a folder is noticed.
+        let flags = UInt32(kFSEventStreamCreateFlagUseCFTypes | kFSEventStreamCreateFlagIgnoreSelf | kFSEventStreamCreateFlagFileEvents)
         guard let created = FSEventStreamCreate(kCFAllocatorDefault, callback, &context, [path] as CFArray,
                                                 FSEventStreamEventId(kFSEventStreamEventIdSinceNow), latency, flags) else { return }
         stream = created

@@ -19,6 +19,16 @@ public struct Theme: Identifiable, Equatable, Sendable {
     }
 
     public var previewURL: URL { directory.appendingPathComponent("preview.png") }
+
+    /// The plain folder drawn under every theme's artwork, from the `_base` directory next to the themes.
+    public func baseFolderURL(for color: FolderColor) -> URL? {
+        let fm = FileManager.default
+        for name in [color.rawValue, FolderColor.blue.rawValue] {
+            let url = directory.deletingLastPathComponent().appendingPathComponent("_base/\(name).png")
+            if fm.fileExists(atPath: url.path) { return url }
+        }
+        return nil
+    }
 }
 
 public struct ThemeStore: Sendable {

@@ -86,6 +86,7 @@ final class AppModel: ObservableObject {
     func setMaxDepth(_ depth: Int) { change { $0.maxDepth = min(8, max(1, depth)) } }
     func setOverrideCustomIcons(_ value: Bool) { change { $0.overrideCustomIcons = value } }
     func setPreferGit(_ value: Bool) { change { $0.preferGit = value } }
+    func setMatchTagColor(_ value: Bool) { change { $0.matchTagColor = value } }
 
     func addExcludedFolder() {
         let panel = NSOpenPanel()

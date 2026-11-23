@@ -41,6 +41,8 @@ public final class Engine {
         self.setter = setter
         paths.ensure()
         journal = Journal(url: paths.journal)
+        // Finished icons are cheap to rebuild; start clean so edited themes are picked up.
+        try? FileManager.default.removeItem(at: paths.cache)
         _settings = Preferences.load(from: paths.settings)
         _status.themedFolders = journal.count
     }
@@ -143,7 +145,10 @@ public final class Engine {
             var candidates = Set<String>()
             for path in changedPaths {
                 let url = URL(fileURLWithPath: path, isDirectory: true).canonicalFolder
+                // The changed item itself (a folder whose tag colour changed) and the folder it is in
+                // (whose contents changed).
                 candidates.insert(url.path)
+                candidates.insert(url.deletingLastPathComponent().path)
                 let children = (try? FileManager.default.contentsOfDirectory(at: url, includingPropertiesForKeys: nil, options: [.skipsHiddenFiles])) ?? []
                 for child in children.prefix(500) where self.journal[child.path] == nil {
                     candidates.insert(child.path)
@@ -171,13 +176,17 @@ public final class Engine {
     private func apply(to folder: URL, context: Context) -> Bool {
         let category = resolveCategory(for: folder, context: context)
         let existing = journal[folder.path]
+        let color = context.settings.matchTagColor ? FolderColor.of(folder) : .blue
         let hasIcon = setter.hasCustomIcon(folder)
-        if let existing, existing.themeID == context.theme.id, existing.category == category, hasIcon { return false }
-        guard let icon = context.theme.iconURL(for: category) else { return false }
+        if let existing, existing.themeID == context.theme.id, existing.category == category, existing.color == color, hasIcon {
+            return false
+        }
+        guard let icon = finishedIcon(for: category, color: color, theme: context.theme) else { return false }
 
         var entry = existing ?? JournalEntry(path: folder.path, category: category, themeID: context.theme.id)
         entry.category = category
         entry.themeID = context.theme.id
+        entry.color = color
         entry.date = Date()
 
         if existing == nil, hasIcon, !Xattr.has(appliedAttribute, on: folder) {
@@ -198,6 +207,13 @@ public final class Engine {
         }
         Xattr.set(appliedAttribute, value: "\(context.theme.id)/\(category.rawValue)", on: folder)
         return true
+    }
+
+    /// The finished icon: the theme's artwork drawn on a plain folder in `color`.
+    private func finishedIcon(for category: FolderCategory, color: FolderColor, theme: Theme) -> URL? {
+        guard let artwork = theme.iconURL(for: category) else { return nil }
+        let destination = paths.cache.appendingPathComponent("\(theme.id)/\(color.rawValue)/\(artwork.lastPathComponent)")
+        return IconComposer.compose(base: theme.baseFolderURL(for: color), artwork: artwork, to: destination)
     }
 
     // MARK: restoring

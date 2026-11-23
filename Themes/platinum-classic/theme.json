@@ -2,8 +2,9 @@
   "id": "platinum-classic",
   "name": "Platinum Classic",
   "group": "OS Classics",
-  "description": "Bevelled folders in the style of late-90s desktops.",
-  "version": 2,
+  "description": "Bevelled grey plates in the style of late-90s desktops.",
+  "version": 3,
+  "format": "artwork",
   "author": "HyperIcon",
   "categories": [
     "folder",

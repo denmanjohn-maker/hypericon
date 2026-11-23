@@ -2,8 +2,9 @@
   "id": "neon-arcade",
   "name": "Neon Arcade",
   "group": "80s",
-  "description": "Arcade cabinets with a joystick, buttons and a neon screen.",
-  "version": 2,
+  "description": "Arcade cabinets with neon symbols on the screen.",
+  "version": 3,
+  "format": "artwork",
   "author": "HyperIcon",
   "categories": [
     "folder",

@@ -14,6 +14,8 @@ public struct AppPaths: Sendable {
     public var settings: URL { base.appendingPathComponent("settings.json") }
     public var rules: URL { base.appendingPathComponent("rules.json") }
     public var userThemes: URL { base.appendingPathComponent("Themes", isDirectory: true) }
+    /// Finished icons (folder plus artwork), rebuilt on demand.
+    public var cache: URL { base.appendingPathComponent("Cache", isDirectory: true) }
 
     public func ensure() {
         for dir in [base, backups, userThemes] {
@@ -31,6 +33,8 @@ public struct Preferences: Codable, Equatable, Sendable {
     /// Replace icons the user set by hand (they are backed up and put back on restore).
     public var overrideCustomIcons = false
     public var preferGit = false
+    /// Draw each folder in the colour of its Finder tag. When off, every folder is blue.
+    public var matchTagColor = true
     /// Absolute paths that are never themed, along with everything inside them.
     public var excludedPaths: [String] = []
 
@@ -43,6 +47,7 @@ public struct Preferences: Codable, Equatable, Sendable {
         maxDepth = try c.decodeIfPresent(Int.self, forKey: .maxDepth) ?? 4
         overrideCustomIcons = try c.decodeIfPresent(Bool.self, forKey: .overrideCustomIcons) ?? false
         preferGit = try c.decodeIfPresent(Bool.self, forKey: .preferGit) ?? false
+        matchTagColor = try c.decodeIfPresent(Bool.self, forKey: .matchTagColor) ?? true
         excludedPaths = try c.decodeIfPresent([String].self, forKey: .excludedPaths) ?? []
     }
 

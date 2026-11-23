@@ -2,8 +2,9 @@
   "id": "nineties-desktop",
   "name": "Nineties Desktop",
   "group": "OS Classics",
-  "description": "Manila folders with black outlines and hard shadows.",
-  "version": 2,
+  "description": "Little windows with title bars and hard shadows.",
+  "version": 3,
+  "format": "artwork",
   "author": "HyperIcon",
   "categories": [
     "folder",

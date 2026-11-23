@@ -2,8 +2,9 @@
   "id": "synthwave-84",
   "name": "Synthwave '84",
   "group": "80s",
-  "description": "Cassette tapes with striped labels and spinning reels.",
-  "version": 2,
+  "description": "Cassette tapes with striped labels.",
+  "version": 3,
+  "format": "artwork",
   "author": "HyperIcon",
   "categories": [
     "folder",
