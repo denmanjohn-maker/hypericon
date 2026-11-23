@@ -7,10 +7,10 @@ MARKETING_VERSION = 0.1.0
 CURRENT_PROJECT_VERSION = 1
 
 // Your Apple Developer Team ID. Leave empty for unsigned local and CI builds.
-DEVELOPMENT_TEAM =
+DEVELOPMENT_TEAM = 
 CODE_SIGN_STYLE = Automatic
 
 // Sparkle update feed. `$()` keeps xcconfig from treating `//` as a comment.
 SPARKLE_FEED_URL = https:/$()/github.com/denmanjohn-maker/hypericon/releases/latest/download/appcast.xml
 // EdDSA public key from Sparkle's generate_keys. Empty disables in-app updates.
-SPARKLE_PUBLIC_KEY =
+SPARKLE_PUBLIC_KEY = HzBdxnhkWPFwxr17D0amsS6KZyq194NmpaP8xgEdUDM
