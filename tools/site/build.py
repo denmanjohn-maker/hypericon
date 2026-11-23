@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-"""Builds the website's theme assets from Themes/: one sprite sheet per theme and themes.js."""
+"""Builds the website's theme assets from Themes/: one artwork sprite sheet per theme, the plain
+folders in each tag colour (assets/base/), and themes.js."""
 import json
 import os
 
@@ -11,12 +12,17 @@ ASSETS = os.path.join(ROOT, "site", "assets")
 CELL, COLS = 128, 9
 GROUPS = ["Holidays", "Sci-Fi", "80s", "Computer Retro", "OS Classics"]
 
+os.makedirs(os.path.join(ASSETS, "base"), exist_ok=True)
+for name in sorted(os.listdir(os.path.join(THEMES, "_base"))):
+    Image.open(os.path.join(THEMES, "_base", name)).convert("RGBA").resize((CELL, CELL), Image.LANCZOS).save(
+        os.path.join(ASSETS, "base", name), optimize=True)
+
 categories = json.load(open(os.path.join(THEMES, "categories.json")))
 ids = [c["id"] for c in categories]
 themes = []
 for name in sorted(os.listdir(THEMES)):
     manifest_path = os.path.join(THEMES, name, "theme.json")
-    if not os.path.exists(manifest_path):
+    if name.startswith("_") or not os.path.exists(manifest_path):
         continue
     manifest = json.load(open(manifest_path))
     rows = (len(ids) + COLS - 1) // COLS

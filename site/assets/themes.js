@@ -116,55 +116,55 @@ window.HYPERICON = {
    "id": "halloween",
    "name": "Halloween",
    "group": "Holidays",
-   "description": "Jack-o'-lantern folders with carved, candle-lit symbols."
+   "description": "Jack-o'-lanterns with the symbol carved and candle-lit."
   },
   {
    "id": "harvest",
    "name": "Harvest",
    "group": "Holidays",
-   "description": "Wooden market crates with rope handles and branded symbols."
+   "description": "Wooden crates with branded symbols and a sheaf of wheat."
   },
   {
    "id": "thanksgiving",
    "name": "Thanksgiving",
    "group": "Holidays",
-   "description": "A turkey's feather fan and a pilgrim buckle on every folder."
+   "description": "A turkey's feather fan behind a pilgrim buckle."
   },
   {
    "id": "valentine",
    "name": "Valentine",
    "group": "Holidays",
-   "description": "Love-letter envelopes sealed with a wax heart."
+   "description": "Love letters sealed with a wax heart."
   },
   {
    "id": "winter-holiday",
    "name": "Winter Holiday",
    "group": "Holidays",
-   "description": "Folders wrapped as gifts, with ribbon, a bow and a tag."
+   "description": "A gift tag with holly on every folder."
   },
   {
    "id": "scifi-hud",
    "name": "Sci-Fi HUD",
    "group": "Sci-Fi",
-   "description": "Riveted console panels with holographic displays."
+   "description": "Riveted console screens with holographic symbols."
   },
   {
    "id": "neon-arcade",
    "name": "Neon Arcade",
    "group": "80s",
-   "description": "Arcade cabinets with a joystick, buttons and a neon screen."
+   "description": "Arcade cabinets with neon symbols on the screen."
   },
   {
    "id": "synthwave-84",
    "name": "Synthwave '84",
    "group": "80s",
-   "description": "Cassette tapes with striped labels and spinning reels."
+   "description": "Cassette tapes with striped labels."
   },
   {
    "id": "8-bit-pixel",
    "name": "8-Bit Pixel",
    "group": "Computer Retro",
-   "description": "Chunky low-resolution pixel art."
+   "description": "Chunky low-resolution pixel badges."
   },
   {
    "id": "green-phosphor",
@@ -176,19 +176,19 @@ window.HYPERICON = {
    "id": "aqua-gloss",
    "name": "Aqua Gloss",
    "group": "OS Classics",
-   "description": "Glossy pinstriped folders from the early 2000s."
+   "description": "Glossy pinstriped gel badges from the early 2000s."
   },
   {
    "id": "nineties-desktop",
    "name": "Nineties Desktop",
    "group": "OS Classics",
-   "description": "Manila folders with black outlines and hard shadows."
+   "description": "Little windows with title bars and hard shadows."
   },
   {
    "id": "platinum-classic",
    "name": "Platinum Classic",
    "group": "OS Classics",
-   "description": "Bevelled folders in the style of late-90s desktops."
+   "description": "Bevelled grey plates in the style of late-90s desktops."
   }
  ]
 };
