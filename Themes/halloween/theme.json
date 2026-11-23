@@ -2,8 +2,9 @@
   "id": "halloween",
   "name": "Halloween",
   "group": "Holidays",
-  "description": "Jack-o'-lantern folders with carved, candle-lit symbols.",
-  "version": 2,
+  "description": "Jack-o'-lanterns with the symbol carved and candle-lit.",
+  "version": 3,
+  "format": "artwork",
   "author": "HyperIcon",
   "categories": [
     "folder",

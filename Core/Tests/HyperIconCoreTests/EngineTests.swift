@@ -36,7 +36,10 @@ final class EngineTests: TempDirTestCase {
 
     func testBundledThemesAreComplete() {
         let themes = ThemeStore(directories: [Self.bundledThemes]).load()
-        XCTAssertGreaterThanOrEqual(themes.count, 12)
+        XCTAssertGreaterThanOrEqual(themes.count, 13)
+        for color in FolderColor.allCases {
+            XCTAssertEqual(themes.first?.baseFolderURL(for: color)?.lastPathComponent, "\(color.rawValue).png")
+        }
         for theme in themes {
             for category in FolderCategory.allCases {
                 XCTAssertEqual(theme.iconURL(for: category)?.lastPathComponent, "\(category.rawValue).png", "\(theme.id) is missing \(category)")
@@ -96,7 +99,7 @@ final class EngineTests: TempDirTestCase {
         engine.update { $0.themeID = "aqua-gloss" }
         engine.applyAllNow()
         let icon = try String(contentsOf: folder("Music/Album").appendingPathComponent(iconFileName), encoding: .utf8)
-        XCTAssertTrue(icon.contains("aqua-gloss/music.png"))
+        XCTAssertTrue(icon.contains("aqua-gloss/blue/music.png"), icon)
         XCTAssertEqual(Set(engine.journal.all.map(\.themeID)), ["aqua-gloss"])
     }
 
@@ -152,6 +155,60 @@ final class EngineTests: TempDirTestCase {
         wait(for: [done], timeout: 10)
         XCTAssertEqual(setter.iconName(folder("Projects/site")), "node")
         XCTAssertEqual(setter.iconName(folder("Desktop/shots")), "video")
+    }
+
+    private func iconPath(_ folder: URL) -> String {
+        (try? String(contentsOf: folder.appendingPathComponent(iconFileName), encoding: .utf8)) ?? ""
+    }
+
+    private func tag(_ folder: URL, label: Int) throws {
+        var url = folder
+        var values = URLResourceValues()
+        values.labelNumber = label
+        try url.setResourceValues(values)
+    }
+
+    func testFoldersAreDrawnInTheirTagColour() throws {
+        try tag(folder("Music/Album"), label: 3)      // purple
+        let engine = makeEngine()
+        engine.update { $0.themeID = "halloween" }
+        engine.applyAllNow()
+
+        let purple = iconPath(folder("Music/Album"))
+        XCTAssertTrue(purple.contains("/halloween/purple/music.png"), purple)
+        XCTAssertTrue(iconPath(folder("Projects/api")).contains("/halloween/blue/go.png"), "untagged folders are blue")
+        XCTAssertTrue(FileManager.default.fileExists(atPath: purple), "the finished icon is written to the cache")
+        XCTAssertEqual(engine.journal[folder("Music/Album").path]?.color, .purple)
+
+        // Re-tagging the folder is picked up by the watcher path.
+        try tag(folder("Music/Album"), label: 6)      // red
+        let done = expectation(description: "status update")
+        done.assertForOverFulfill = false
+        engine.onStatus = { _ in done.fulfill() }
+        engine.handleChanges(in: [folder("Music/Album").path])
+        wait(for: [done], timeout: 10)
+        XCTAssertTrue(iconPath(folder("Music/Album")).contains("/halloween/red/music.png"))
+
+        // With tag colours turned off, everything is blue.
+        engine.update { $0.matchTagColor = false }
+        engine.applyAllNow()
+        XCTAssertTrue(iconPath(folder("Music/Album")).contains("/halloween/blue/music.png"))
+
+        // Restoring removes the icon but leaves the user's tag alone.
+        engine.restoreAllNow()
+        XCTAssertEqual(iconFiles(), [])
+        XCTAssertEqual(FolderColor.of(folder("Music/Album")), .red)
+    }
+
+    func testLabelNumbersMapToColours() {
+        XCTAssertEqual(FolderColor(labelNumber: 0), .blue)
+        XCTAssertEqual(FolderColor(labelNumber: 1), .gray)
+        XCTAssertEqual(FolderColor(labelNumber: 2), .green)
+        XCTAssertEqual(FolderColor(labelNumber: 3), .purple)
+        XCTAssertEqual(FolderColor(labelNumber: 4), .blue)
+        XCTAssertEqual(FolderColor(labelNumber: 5), .yellow)
+        XCTAssertEqual(FolderColor(labelNumber: 6), .red)
+        XCTAssertEqual(FolderColor(labelNumber: 7), .orange)
     }
 
     /// Exercises the real Finder icon API. Skipped where the machine cannot set icons (some headless CI hosts).

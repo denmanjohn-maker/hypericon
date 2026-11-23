@@ -3,7 +3,8 @@
   "name": "Green Phosphor CRT",
   "group": "Computer Retro",
   "description": "Beige terminals with a glowing green screen.",
-  "version": 2,
+  "version": 3,
+  "format": "artwork",
   "author": "HyperIcon",
   "categories": [
     "folder",

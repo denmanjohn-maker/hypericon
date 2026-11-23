@@ -2,8 +2,9 @@
   "id": "harvest",
   "name": "Harvest",
   "group": "Holidays",
-  "description": "Wooden market crates with rope handles and branded symbols.",
-  "version": 2,
+  "description": "Wooden crates with branded symbols and a sheaf of wheat.",
+  "version": 3,
+  "format": "artwork",
   "author": "HyperIcon",
   "categories": [
     "folder",

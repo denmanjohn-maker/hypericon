@@ -67,9 +67,8 @@ header.hero p.lead { max-width: 660px; margin: 18px auto 26px; font-size: 1.14re
 .files { display: grid; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 6px 4px; padding: 18px 14px 22px; }
 .file { text-align: center; font-size: 12px; color: #dfe1ea; padding: 6px 2px; }
 .file span { display: block; margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.ico { display: block; width: 76px; aspect-ratio: 1; margin: 0 auto; background-image: var(--sprite); background-size: 900% 300%;
-  background-repeat: no-repeat; }
-body.pixel .ico { image-rendering: pixelated; }
+.ico, .card .thumb i, .theme .strip i, .tagdemo i { display: block; aspect-ratio: 1; background-repeat: no-repeat; }
+.ico { width: 76px; margin: 0 auto; }
 .popover { background: rgba(32,33,44,.92); backdrop-filter: blur(18px); border-radius: 12px; border: 1px solid rgba(255,255,255,.14);
   box-shadow: 0 18px 50px rgba(0,0,0,.5); font-size: 12.5px; overflow: hidden; }
 .popover .head { display: flex; align-items: center; padding: 11px 13px; border-bottom: 1px solid rgba(255,255,255,.1); }
@@ -82,13 +81,21 @@ body.pixel .ico { image-rendering: pixelated; }
 .cards { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px 8px; }
 .card { all: unset; display: block; min-width: 0; cursor: pointer; text-align: center; font-size: 10.5px; color: #dfe1ea; border-radius: 8px; }
 .card .thumb { background: #30333d; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); padding: 5px; border-radius: 8px; border: 1px solid rgba(255,255,255,.14); margin-bottom: 4px; }
-.card .thumb i { display: block; aspect-ratio: 1; background-size: 900% 300%; background-repeat: no-repeat; }
 .card[aria-pressed="true"] .thumb { outline: 3px solid #4c9bff; outline-offset: -1px; }
 .card[aria-pressed="true"] { font-weight: 650; }
 .card:focus-visible .thumb { outline: 3px solid #fff; }
 .card span { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .popover .rows { border-top: 1px solid rgba(255,255,255,.1); padding: 6px; color: #dfe1ea; }
 .popover .rows div { padding: 5px 8px; }
+.colours { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 32px; align-items: center; margin-top: 10px; }
+.tagdemo { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 28px 20px; text-align: center; }
+.tagdemo i { width: 168px; max-width: 60%; margin: 0 auto 18px; }
+.chips { display: flex; justify-content: center; gap: 12px; flex-wrap: wrap; }
+.chip { all: unset; cursor: pointer; width: 26px; height: 26px; border-radius: 50%; box-shadow: inset 0 0 0 2px rgba(255,255,255,.25); }
+.chip[aria-pressed="true"] { box-shadow: 0 0 0 3px var(--bg), 0 0 0 5px #fff; }
+.chip:focus-visible { box-shadow: 0 0 0 3px var(--bg), 0 0 0 5px var(--accent); }
+.tagdemo p { color: var(--muted); font-size: .88rem; margin-top: 14px; }
+@media (max-width: 760px) { .colours { grid-template-columns: 1fr; } }
 .demo-note { text-align: center; margin-top: 14px; font-size: .88rem; color: var(--muted); }
 @media (max-width: 860px) {
   .desk { grid-template-columns: 1fr; }
@@ -117,7 +124,6 @@ section { padding: 84px 0 0; }
 .theme:hover { transform: translateY(-2px); }
 .theme:focus-visible, .theme[aria-pressed="true"] { border-color: var(--text); }
 .theme .strip { background: #30333d; display: grid; grid-template-columns: repeat(4, 1fr); padding: 16px 14px; }
-.theme .strip i { display: block; aspect-ratio: 1; background-size: 900% 300%; background-repeat: no-repeat; }
 .theme .meta { padding: 12px 16px 16px; }
 .theme .meta small { color: var(--muted); font-weight: 700; letter-spacing: .08em; text-transform: uppercase; font-size: .7rem; }
 .theme .meta p { color: var(--muted); font-size: .9rem; margin-top: 4px; }
@@ -164,7 +170,7 @@ footer .wrap { display: flex; gap: 20px; flex-wrap: wrap; justify-content: space
 
   <header class="hero" id="top">
     <h1>Folders that show<br><span class="accent">what's inside.</span></h1>
-    <p class="lead">HyperIcon is a macOS menu bar utility that looks inside each Finder folder, gives it a matching icon, and lets you restyle every one of them with a single click.</p>
+    <p class="lead">HyperIcon is a macOS menu bar utility that looks inside each Finder folder, gives it a matching icon, and lets you restyle every one of them with a single click. The folder colour stays yours: set it with a Finder tag.</p>
     <div class="cta">
       <a class="btn primary" href="https://github.com/denmanjohn-maker/hypericon/releases/latest/download/HyperIcon.dmg">
         <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 3v10m0 0l-4-4m4 4l4-4M4 16h12"/></svg>
@@ -193,7 +199,7 @@ footer .wrap { display: flex; gap: 20px; flex-wrap: wrap; justify-content: space
         </div>
       </div>
     </div>
-    <p class="demo-note">This preview is live. Pick a theme in the panel and every folder changes, exactly as it does on your Mac.</p>
+    <p class="demo-note">This preview is live. Pick a theme in the panel and every folder changes. Folder colours here come from Finder tags, just as on your Mac.</p>
   </header>
 
   <section id="how">
@@ -208,10 +214,25 @@ footer .wrap { display: flex; gap: 20px; flex-wrap: wrap; justify-content: space
     <div class="rules" id="rules"></div>
   </section>
 
+  <section id="colour">
+    <div class="colours">
+      <div>
+        <p class="kicker">Your colours</p>
+        <h2>Themes bring the artwork. You pick the colour.</h2>
+        <p class="sub">A theme never recolours your folders. HyperIcon draws each one in the colour of its Finder tag, so right-click a folder, choose a tag colour, and its icon follows within seconds. Untagged folders stay the familiar macOS blue.</p>
+      </div>
+      <div class="tagdemo">
+        <i id="tag-icon" role="img" aria-label="A folder icon in the selected tag colour"></i>
+        <div class="chips" id="chips" role="group" aria-label="Finder tag colour"></div>
+        <p>Choose a tag colour to see the folder change.</p>
+      </div>
+    </div>
+  </section>
+
   <section id="themes">
     <p class="kicker">Themes</p>
     <h2>Thirteen themes. One click each.</h2>
-    <p class="sub">Each theme rebuilds the folder itself: a carved pumpkin, a wrapped gift, a cassette tape, an arcade cabinet. The symbol on it still tells you what is inside. Every theme covers all 27 folder types. Select one to try it on this page.</p>
+    <p class="sub">Each theme adds its own artwork to the folder: a carved pumpkin, a gift tag, a cassette tape, an arcade screen. The symbol on it tells you what is inside, and the folder keeps the colour you gave it. Every theme covers all 27 folder types. Select one to try it on this page.</p>
     <div class="gallery" id="gallery"></div>
   </section>
 
@@ -265,8 +286,9 @@ bash restore-icons.sh</pre>
     <div class="faq">
       <details><summary>Which folders does HyperIcon change?</summary><p>Folders in your home folder, four levels deep by default. It skips Library, hidden folders, application bundles and dependency folders such as <code>node_modules</code>. You can change the depth and exclude any folder in Settings.</p></details>
       <details><summary>Will it clutter my Git repositories?</summary><p>No. A repository gets one icon on its top folder and nothing inside it is touched. HyperIcon also adds the hidden icon file to that repository's local <code>.git/info/exclude</code>, so it never appears in <code>git status</code>. That line is removed when you restore.</p></details>
-      <details><summary>Does it upload anything?</summary><p>No. HyperIcon only reads file names on your Mac to choose an icon. The only network request it makes is checking GitHub for a new version.</p></details>
+      <details><summary>Does it upload anything?</summary><p>No. HyperIcon only reads file names on your Mac to choose an icon. It makes no network requests at all.</p></details>
       <details><summary>Can I make my own theme?</summary><p>Yes. A theme is a folder of PNG files and a small <code>theme.json</code>. The <a href="https://github.com/denmanjohn-maker/hypericon/blob/main/docs/THEMES.md">theme guide</a> explains the format.</p></details>
+      <details><summary>How do I change a folder's colour?</summary><p>Right-click the folder in Finder and choose a tag colour, or add a tag in Get Info. HyperIcon redraws the icon in that colour. Folders without a coloured tag are blue. The custom colour from macOS 26's Customize Folder is not used, only tag colours.</p></details>
       <details><summary>How do I uninstall it?</summary><p>Choose Restore Original Icons from the menu, quit HyperIcon, and move it to the Trash.</p></details>
     </div>
   </section>
@@ -286,20 +308,38 @@ bash restore-icons.sh</pre>
   }
   function sprite(id) { return 'url("assets/sprites/' + id + '.png")'; }
   function el(tag, cls, text) { var n = document.createElement(tag); if (cls) n.className = cls; if (text) n.textContent = text; return n; }
-  function icon(cat, themeId) {
-    var n = el(themeId ? 'i' : 'span', themeId ? '' : 'ico');
-    n.style.backgroundPosition = pos(cat);
-    if (themeId) { n.style.backgroundImage = sprite(themeId); if (themeId === '8-bit-pixel') n.style.imageRendering = 'pixelated'; }
+  function base(colour) { return 'url("assets/base/' + (colour || 'blue') + '.png")'; }
+  // An icon is two layers, as in the app: the theme artwork over a plain folder in the tag colour.
+  function paint(n, cat, themeId, colour) {
+    n.style.backgroundImage = (themeId ? sprite(themeId) : 'var(--sprite)') + ', ' + base(colour);
+    n.style.backgroundSize = '900% 300%, 100% 100%';
+    n.style.backgroundPosition = pos(cat) + ', 0 0';
     return n;
   }
+  function icon(cat, themeId, colour) { return paint(el(themeId ? 'i' : 'span', themeId ? '' : 'ico'), cat, themeId, colour); }
 
-  var folders = [['git', 'dotfiles'], ['node', 'web-portal'], ['python', 'data-pipeline'], ['docker', 'compose-stack'],
-    ['kubernetes', 'helm-charts'], ['terraform', 'infra-live'], ['ci', 'build-jobs'], ['go', 'exporter'],
-    ['documents', 'Contracts'], ['spreadsheets', 'Budgets'], ['pdf', 'Invoices'], ['presentations', 'Town Hall'],
-    ['images', 'Field Photos'], ['music', 'Playlists'], ['video', 'Recordings'], ['archives', 'Backups'],
+  var folders = [['git', 'dotfiles'], ['node', 'web-portal', 'green'], ['python', 'data-pipeline'], ['docker', 'compose-stack'],
+    ['kubernetes', 'helm-charts', 'purple'], ['terraform', 'infra-live', 'purple'], ['ci', 'build-jobs'], ['go', 'exporter', 'gray'],
+    ['documents', 'Contracts', 'red'], ['spreadsheets', 'Budgets', 'green'], ['pdf', 'Invoices', 'red'], ['presentations', 'Town Hall', 'orange'],
+    ['images', 'Field Photos', 'yellow'], ['music', 'Playlists', 'orange'], ['video', 'Recordings'], ['archives', 'Backups', 'gray'],
     ['data', 'Exports'], ['folder', 'Misc']];
   var files = document.getElementById('files');
-  folders.forEach(function (f) { var d = el('div', 'file'); d.appendChild(icon(f[0])); d.appendChild(el('span', '', f[1])); files.appendChild(d); });
+  folders.forEach(function (f) { var d = el('div', 'file'); d.appendChild(icon(f[0], null, f[2])); d.appendChild(el('span', '', f[1])); files.appendChild(d); });
+
+  var tagColours = [['blue', 'No tag', '#3f9cf0'], ['red', 'Red', '#f0504a'], ['orange', 'Orange', '#ff9a2e'], ['yellow', 'Yellow', '#f5c624'],
+    ['green', 'Green', '#3cc35c'], ['purple', 'Purple', '#b05ad8'], ['gray', 'Gray', '#9a9aa2']];
+  var tagIcon = document.getElementById('tag-icon'), chips = document.getElementById('chips'), tagColour = 'purple', chipButtons = [];
+  function paintTag() {
+    paint(tagIcon, 'git', null, tagColour);
+    chipButtons.forEach(function (b) { b.setAttribute('aria-pressed', b.dataset.colour === tagColour ? 'true' : 'false'); });
+  }
+  tagColours.forEach(function (c) {
+    var b = el('button', 'chip'); b.type = 'button'; b.dataset.colour = c[0]; b.style.background = c[2];
+    b.setAttribute('aria-label', c[1]); b.title = c[1];
+    b.addEventListener('click', function () { tagColour = c[0]; paintTag(); });
+    chips.appendChild(b); chipButtons.push(b);
+  });
+  paintTag();
 
   var ruleList = [['git', '.git', 'Git repository'], ['node', 'package.json', 'Node.js project'], ['python', 'pyproject.toml', 'Python project'],
     ['docker', 'Dockerfile', 'Container project'], ['kubernetes', 'Chart.yaml', 'Helm chart or Kustomize'], ['terraform', '*.tf', 'Terraform'],
@@ -330,7 +370,6 @@ bash restore-icons.sh</pre>
     var t = data.themes.filter(function (x) { return x.id === id; })[0] || data.themes[0];
     var root = document.documentElement.style;
     root.setProperty('--sprite', sprite(t.id));
-    document.body.classList.toggle('pixel', t.id === '8-bit-pixel');
     document.getElementById('active-name').textContent = t.name;
     buttons.forEach(function (b) { b.setAttribute('aria-pressed', b.dataset.id === t.id ? 'true' : 'false'); });
     try { localStorage.setItem('hypericon-theme', t.id); } catch (e) {}

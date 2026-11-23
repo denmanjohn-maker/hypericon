@@ -2,8 +2,9 @@
   "id": "winter-holiday",
   "name": "Winter Holiday",
   "group": "Holidays",
-  "description": "Folders wrapped as gifts, with ribbon, a bow and a tag.",
-  "version": 2,
+  "description": "A gift tag with holly on every folder.",
+  "version": 3,
+  "format": "artwork",
   "author": "HyperIcon",
   "categories": [
     "folder",

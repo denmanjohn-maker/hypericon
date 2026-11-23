@@ -5,10 +5,9 @@ Pushing a version tag runs [`.github/workflows/release.yml`](../.github/workflow
 1. Builds a universal Release build.
 2. Signs it with your **Developer ID Application** certificate (hardened runtime).
 3. Notarizes and staples the app, builds `HyperIcon.dmg`, then signs, notarizes and staples the disk image.
-4. Generates a signed Sparkle `appcast.xml`.
-5. Publishes a GitHub release with `HyperIcon.dmg`, its checksum, `appcast.xml` and `restore-icons.sh`.
+4. Publishes a GitHub release with `HyperIcon.dmg`, its checksum and `restore-icons.sh`.
 
-Installed copies check `https://github.com/denmanjohn-maker/hypericon/releases/latest/download/appcast.xml` for updates.
+HyperIcon does not update itself. People get new versions by downloading the latest DMG from the Releases page.
 
 ## One-time setup
 
@@ -41,55 +40,11 @@ base64 -i developer-id.p12 | pbcopy
 | `ASC_ISSUER_ID` | The Issuer ID shown above the key list |
 | `ASC_KEY_P8` | The full text of the `.p8` file, including the BEGIN and END lines |
 
-### 3. Sparkle update key
+### 3. Add the secrets
 
-Sparkle's `generate_keys` tool creates the key pair. Use the copy Xcode downloads with the Sparkle package, which macOS runs without complaint. Generate and open the project once so the packages resolve:
+In the repository: **Settings → Secrets and variables → Actions → New repository secret**, one for each of the six names above. If you added `SPARKLE_ED_PRIVATE_KEY` earlier, it is no longer used and can be deleted. The release job stops with a clear message if any is missing.
 
-```bash
-xcodegen generate
-```
-
-```bash
-open HyperIcon.xcodeproj
-```
-
-Then find the tool:
-
-```bash
-find ~/Library/Developer/Xcode/DerivedData -path '*artifacts/sparkle/Sparkle/bin/generate_keys'
-```
-
-Run the path it prints. It prints a public key and stores the private key in your login keychain; allow the Keychain prompt. Run the same path again with `-x` to export the private key:
-
-```bash
-/path/printed/above/generate_keys -x sparkle-private-key.txt
-```
-
-<details>
-<summary>Using a Sparkle release you downloaded yourself</summary>
-
-A copy downloaded in a browser is quarantined, and macOS refuses to run it with a warning that it may contain malware. The tool is not notarized; the warning does not mean anything was found. After confirming the archive came from [github.com/sparkle-project/Sparkle/releases](https://github.com/sparkle-project/Sparkle/releases), remove the quarantine flag from inside the unpacked folder:
-
-```bash
-xattr -dr com.apple.quarantine .
-```
-
-```bash
-./bin/generate_keys
-```
-
-</details>
-
-- Paste the **public** key into [`Config/HyperIcon.xcconfig`](../Config/HyperIcon.xcconfig) as `SPARKLE_PUBLIC_KEY = ...` and commit it. It is not a secret.
-- Add the contents of `sparkle-private-key.txt` as the secret `SPARKLE_ED_PRIVATE_KEY`, then delete the file.
-
-Keep a backup of the private key. If it is lost, existing installs cannot verify future updates.
-
-### 4. Add the secrets
-
-In the repository: **Settings → Secrets and variables → Actions → New repository secret**, one for each of the seven names above. The release job stops with a clear message if any is missing.
-
-### 5. Turn on the website
+### 4. Turn on the website
 
 **Settings → Pages → Build and deployment → Source: GitHub Actions.** The site in `site/` deploys on every push to `main` that changes it. GitHub Pages and public release downloads need the repository to be public (or a paid plan for Pages on a private repository).
 
@@ -118,7 +73,6 @@ Do this on a Mac with the downloaded DMG. None of it can be verified by CI.
 - [ ] macOS asks for Desktop, Documents and Downloads access, and denying one does not break the others.
 - [ ] A Git repository gets one icon and `git status` stays clean.
 - [ ] **Restore Original Icons** returns every folder to how it was, including one you had customised by hand (with *Replace icons I set myself* on).
-- [ ] After the second release: an older install offers the update.
 
 ## Replacing the website illustrations with real screenshots
 

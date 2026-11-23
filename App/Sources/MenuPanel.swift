@@ -62,9 +62,6 @@ struct MenuPanel: View {
         VStack(spacing: 0) {
             MenuRow(title: "Rescan Folders", symbol: "arrow.clockwise") { model.rescan() }
             MenuRow(title: "Restore Original Icons…", symbol: "arrow.uturn.backward") { model.restoreOriginalIcons() }
-            if model.canCheckForUpdates {
-                MenuRow(title: "Check for Updates…", symbol: "arrow.down.circle") { model.checkForUpdates() }
-            }
             SettingsLink {
                 MenuRowLabel(title: "Settings…", symbol: "gearshape")
             }

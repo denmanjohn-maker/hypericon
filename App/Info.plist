@@ -38,11 +38,5 @@
 	<string>HyperIcon looks at the folders in Documents to choose and apply themed icons.</string>
 	<key>NSDownloadsFolderUsageDescription</key>
 	<string>HyperIcon looks at the folders in Downloads to choose and apply themed icons.</string>
-	<key>SUFeedURL</key>
-	<string>$(SPARKLE_FEED_URL)</string>
-	<key>SUPublicEDKey</key>
-	<string>$(SPARKLE_PUBLIC_KEY)</string>
-	<key>SUEnableAutomaticChecks</key>
-	<true/>
 </dict>
 </plist>

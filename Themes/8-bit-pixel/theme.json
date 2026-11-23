@@ -2,8 +2,9 @@
   "id": "8-bit-pixel",
   "name": "8-Bit Pixel",
   "group": "Computer Retro",
-  "description": "Chunky low-resolution pixel art.",
-  "version": 2,
+  "description": "Chunky low-resolution pixel badges.",
+  "version": 3,
+  "format": "artwork",
   "author": "HyperIcon",
   "categories": [
     "folder",

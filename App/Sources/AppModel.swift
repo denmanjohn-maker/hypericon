@@ -1,7 +1,6 @@
 import AppKit
 import HyperIconCore
 import ServiceManagement
-import Sparkle
 import SwiftUI
 
 struct ThemeGroup: Identifiable {
@@ -24,7 +23,6 @@ final class AppModel: ObservableObject {
 
     private let engine: Engine
     private var watcher: FolderWatcher?
-    private let updater: SPUStandardUpdaterController?
 
     init() {
         let paths = AppPaths()
@@ -33,10 +31,6 @@ final class AppModel: ObservableObject {
         preferences = engine.settings
         status = engine.status
         launchAtLogin = SMAppService.mainApp.status == .enabled
-
-        // Updates need the EdDSA public key that release builds embed; development builds have none.
-        let key = Bundle.main.object(forInfoDictionaryKey: "SUPublicEDKey") as? String ?? ""
-        updater = key.isEmpty ? nil : SPUStandardUpdaterController(startingUpdater: true, updaterDelegate: nil, userDriverDelegate: nil)
 
         themes = engine.themes
         engine.onStatus = { [weak self] status in
@@ -61,7 +55,6 @@ final class AppModel: ObservableObject {
     }
 
     var activeTheme: Theme? { themes.first { $0.id == preferences.themeID } }
-    var canCheckForUpdates: Bool { updater != nil }
 
     var statusLine: String {
         switch status.activity {
@@ -93,6 +86,7 @@ final class AppModel: ObservableObject {
     func setMaxDepth(_ depth: Int) { change { $0.maxDepth = min(8, max(1, depth)) } }
     func setOverrideCustomIcons(_ value: Bool) { change { $0.overrideCustomIcons = value } }
     func setPreferGit(_ value: Bool) { change { $0.preferGit = value } }
+    func setMatchTagColor(_ value: Bool) { change { $0.matchTagColor = value } }
 
     func addExcludedFolder() {
         let panel = NSOpenPanel()
@@ -140,11 +134,6 @@ final class AppModel: ObservableObject {
             }
         }
         preferences = engine.settings
-    }
-
-    func checkForUpdates() {
-        NSApp.activate(ignoringOtherApps: true)
-        updater?.checkForUpdates(nil)
     }
 
     private func setLaunchAtLogin(_ enabled: Bool) {
