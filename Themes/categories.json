@@ -1,0 +1,110 @@
+[
+  {
+    "id": "folder",
+    "label": "Generic folder"
+  },
+  {
+    "id": "git",
+    "label": "Git repository"
+  },
+  {
+    "id": "xcode",
+    "label": "Xcode / Swift project"
+  },
+  {
+    "id": "node",
+    "label": "Node.js project"
+  },
+  {
+    "id": "python",
+    "label": "Python project"
+  },
+  {
+    "id": "rust",
+    "label": "Rust project"
+  },
+  {
+    "id": "go",
+    "label": "Go project"
+  },
+  {
+    "id": "java",
+    "label": "Java / JVM project"
+  },
+  {
+    "id": "dotnet",
+    "label": ".NET project"
+  },
+  {
+    "id": "docker",
+    "label": "Docker / containers"
+  },
+  {
+    "id": "kubernetes",
+    "label": "Kubernetes / Helm"
+  },
+  {
+    "id": "terraform",
+    "label": "Terraform / infrastructure"
+  },
+  {
+    "id": "ci",
+    "label": "CI/CD pipeline"
+  },
+  {
+    "id": "documents",
+    "label": "Documents"
+  },
+  {
+    "id": "spreadsheets",
+    "label": "Spreadsheets"
+  },
+  {
+    "id": "presentations",
+    "label": "Presentations"
+  },
+  {
+    "id": "pdf",
+    "label": "PDFs"
+  },
+  {
+    "id": "images",
+    "label": "Images"
+  },
+  {
+    "id": "music",
+    "label": "Music"
+  },
+  {
+    "id": "video",
+    "label": "Video"
+  },
+  {
+    "id": "code",
+    "label": "Source code"
+  },
+  {
+    "id": "archives",
+    "label": "Archives"
+  },
+  {
+    "id": "fonts",
+    "label": "Fonts"
+  },
+  {
+    "id": "books",
+    "label": "Books"
+  },
+  {
+    "id": "design",
+    "label": "Design / 3D"
+  },
+  {
+    "id": "data",
+    "label": "Data"
+  },
+  {
+    "id": "web",
+    "label": "Web"
+  }
+]

@@ -1,0 +1,130 @@
+name: Release
+
+# Push a tag like v0.1.0 to build, sign, notarize and publish HyperIcon.
+# Required secrets are described in docs/RELEASING.md.
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: macos-15
+    env:
+      TAG: ${{ github.ref_name }}
+      APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+      ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+      ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check release secrets
+        env:
+          DEVELOPER_ID_P12_BASE64: ${{ secrets.DEVELOPER_ID_P12_BASE64 }}
+          DEVELOPER_ID_P12_PASSWORD: ${{ secrets.DEVELOPER_ID_P12_PASSWORD }}
+          ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
+          SPARKLE_ED_PRIVATE_KEY: ${{ secrets.SPARKLE_ED_PRIVATE_KEY }}
+        run: |
+          missing=0
+          for name in DEVELOPER_ID_P12_BASE64 DEVELOPER_ID_P12_PASSWORD APPLE_TEAM_ID ASC_KEY_ID ASC_ISSUER_ID ASC_KEY_P8 SPARKLE_ED_PRIVATE_KEY; do
+            if [ -z "${!name}" ]; then
+              echo "::error::Repository secret $name is not set. See docs/RELEASING.md."
+              missing=1
+            fi
+          done
+          if ! grep -Eq '^SPARKLE_PUBLIC_KEY = .+' Config/HyperIcon.xcconfig; then
+            echo "::error::SPARKLE_PUBLIC_KEY is empty in Config/HyperIcon.xcconfig. See docs/RELEASING.md."
+            missing=1
+          fi
+          exit $missing
+
+      - name: Import Developer ID certificate
+        env:
+          DEVELOPER_ID_P12_BASE64: ${{ secrets.DEVELOPER_ID_P12_BASE64 }}
+          DEVELOPER_ID_P12_PASSWORD: ${{ secrets.DEVELOPER_ID_P12_PASSWORD }}
+          ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
+        run: |
+          KEYCHAIN="$RUNNER_TEMP/signing.keychain-db"
+          KEYCHAIN_PASSWORD="$(uuidgen)"
+          echo "$DEVELOPER_ID_P12_BASE64" | base64 --decode > "$RUNNER_TEMP/developer-id.p12"
+          printf '%s' "$ASC_KEY_P8" > "$RUNNER_TEMP/asc-key.p8"
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          security import "$RUNNER_TEMP/developer-id.p12" -P "$DEVELOPER_ID_P12_PASSWORD" -A -t cert -f pkcs12 -k "$KEYCHAIN"
+          security set-key-partition-list -S apple-tool:,apple: -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN" >/dev/null
+          security list-keychain -d user -s "$KEYCHAIN"
+          rm "$RUNNER_TEMP/developer-id.p12"
+
+      - name: Generate Xcode project
+        run: |
+          brew install xcodegen
+          xcodegen generate
+
+      - name: Archive
+        run: |
+          set -o pipefail
+          xcodebuild archive -project HyperIcon.xcodeproj -scheme HyperIcon -configuration Release \
+            -archivePath build/HyperIcon.xcarchive -derivedDataPath build/DD \
+            MARKETING_VERSION="${TAG#v}" CURRENT_PROJECT_VERSION="${{ github.run_number }}" \
+            DEVELOPMENT_TEAM="$APPLE_TEAM_ID" CODE_SIGN_STYLE=Manual \
+            CODE_SIGN_IDENTITY="Developer ID Application" OTHER_CODE_SIGN_FLAGS="--timestamp" | tail -n 80
+
+      - name: Export signed app
+        run: |
+          cat > "$RUNNER_TEMP/ExportOptions.plist" <<PLIST
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0"><dict>
+            <key>method</key><string>developer-id</string>
+            <key>signingStyle</key><string>manual</string>
+            <key>signingCertificate</key><string>Developer ID Application</string>
+            <key>teamID</key><string>$APPLE_TEAM_ID</string>
+          </dict></plist>
+          PLIST
+          xcodebuild -exportArchive -archivePath build/HyperIcon.xcarchive -exportPath build/export \
+            -exportOptionsPlist "$RUNNER_TEMP/ExportOptions.plist"
+          codesign --verify --deep --strict --verbose=2 build/export/HyperIcon.app
+
+      - name: Notarize app
+        run: |
+          ditto -c -k --keepParent build/export/HyperIcon.app "$RUNNER_TEMP/HyperIcon.zip"
+          xcrun notarytool submit "$RUNNER_TEMP/HyperIcon.zip" --key "$RUNNER_TEMP/asc-key.p8" \
+            --key-id "$ASC_KEY_ID" --issuer "$ASC_ISSUER_ID" --wait
+          xcrun stapler staple build/export/HyperIcon.app
+
+      - name: Build, sign and notarize disk image
+        run: |
+          mkdir -p build/release
+          scripts/build-dmg.sh build/export/HyperIcon.app build/release/HyperIcon.dmg
+          codesign --sign "Developer ID Application" --timestamp build/release/HyperIcon.dmg
+          xcrun notarytool submit build/release/HyperIcon.dmg --key "$RUNNER_TEMP/asc-key.p8" \
+            --key-id "$ASC_KEY_ID" --issuer "$ASC_ISSUER_ID" --wait
+          xcrun stapler staple build/release/HyperIcon.dmg
+          spctl --assess --type open --context context:primary-signature --verbose=2 build/release/HyperIcon.dmg
+
+      - name: Generate Sparkle appcast
+        env:
+          SPARKLE_ED_PRIVATE_KEY: ${{ secrets.SPARKLE_ED_PRIVATE_KEY }}
+        run: |
+          SPARKLE_BIN="build/DD/SourcePackages/artifacts/sparkle/Sparkle/bin"
+          echo "$SPARKLE_ED_PRIVATE_KEY" | "$SPARKLE_BIN/generate_appcast" --ed-key-file - \
+            --download-url-prefix "https://github.com/$GITHUB_REPOSITORY/releases/download/$TAG/" \
+            --link "https://github.com/$GITHUB_REPOSITORY" \
+            -o build/release/appcast.xml build/release
+          (cd build/release && shasum -a 256 HyperIcon.dmg > HyperIcon.dmg.sha256)
+
+      - name: Publish GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$TAG" build/release/HyperIcon.dmg build/release/HyperIcon.dmg.sha256 \
+            build/release/appcast.xml scripts/restore-icons.sh --title "HyperIcon ${TAG#v}" --generate-notes
+
+      - name: Remove signing material
+        if: always()
+        run: |
+          security delete-keychain "$RUNNER_TEMP/signing.keychain-db" || true
+          rm -f "$RUNNER_TEMP/asc-key.p8"
