@@ -1,0 +1,46 @@
+[
+  {
+    "id": "home",
+    "label": "Home folder"
+  },
+  {
+    "id": "desktop",
+    "label": "Desktop"
+  },
+  {
+    "id": "documents",
+    "label": "Documents"
+  },
+  {
+    "id": "downloads",
+    "label": "Downloads"
+  },
+  {
+    "id": "applications",
+    "label": "Applications"
+  },
+  {
+    "id": "pictures",
+    "label": "Pictures"
+  },
+  {
+    "id": "music",
+    "label": "Music"
+  },
+  {
+    "id": "movies",
+    "label": "Movies"
+  },
+  {
+    "id": "boot-disk",
+    "label": "Startup disk (Macintosh HD)"
+  },
+  {
+    "id": "external-disk",
+    "label": "External and USB drives"
+  },
+  {
+    "id": "network-disk",
+    "label": "Network shares"
+  }
+]

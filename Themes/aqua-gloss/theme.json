@@ -3,7 +3,7 @@
   "name": "Aqua Gloss",
   "group": "OS Classics",
   "description": "Glossy pinstriped gel badges from the early 2000s.",
-  "version": 3,
+  "version": 4,
   "format": "artwork",
   "author": "HyperIcon",
   "categories": [
@@ -34,5 +34,18 @@
     "design",
     "data",
     "web"
+  ],
+  "places": [
+    "home",
+    "desktop",
+    "documents",
+    "downloads",
+    "applications",
+    "pictures",
+    "music",
+    "movies",
+    "boot-disk",
+    "external-disk",
+    "network-disk"
   ]
 }

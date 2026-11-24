@@ -58,3 +58,29 @@ class TempDirTestCase: XCTestCase {
             .deletingLastPathComponent().deletingLastPathComponent().appendingPathComponent("Themes", isDirectory: true)
     }
 }
+
+/// Stands in for mounted disks: whatever is in `volumes` is "plugged in".
+final class FakeVolumes: VolumeListing {
+    var volumes: [MountedVolume] = []
+    func mounted() -> [MountedVolume] { volumes }
+}
+
+/// Stands in for the startup disk. Records each change instead of asking for a password.
+final class FakeBootDisk: BootDiskIconSetting {
+    /// Icons set, in order; nil means removed.
+    var calls: [URL?] = []
+    /// Set to false to act as if the user cancelled the password prompt.
+    var succeeds = true
+    var current: URL?
+
+    func setIcon(_ imageURL: URL?, restoring backup: URL?) -> Bool {
+        calls.append(imageURL)
+        guard succeeds else { return false }
+        current = imageURL ?? backup
+        return true
+    }
+
+    func hasCustomIcon() -> Bool { current != nil }
+
+    func backUpIcon(to destination: URL) -> Bool { current != nil }
+}

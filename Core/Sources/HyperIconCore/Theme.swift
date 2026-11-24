@@ -18,6 +18,14 @@ public struct Theme: Identifiable, Equatable, Sendable {
         return nil
     }
 
+    /// Standalone artwork for a favorite folder, the home folder or a disk, from the theme's `places/` folder.
+    /// Unlike folder artwork it is used as the whole icon, and there is no fallback: a theme without it leaves
+    /// that place alone.
+    public func placeIconURL(for place: Place) -> URL? {
+        let url = directory.appendingPathComponent("places/\(place.rawValue).png")
+        return FileManager.default.fileExists(atPath: url.path) ? url : nil
+    }
+
     public var previewURL: URL { directory.appendingPathComponent("preview.png") }
 
     /// The plain folder drawn under every theme's artwork, from the `_base` directory next to the themes.

@@ -3,7 +3,7 @@
   "name": "Sci-Fi HUD",
   "group": "Sci-Fi",
   "description": "Riveted console screens with holographic symbols.",
-  "version": 3,
+  "version": 4,
   "format": "artwork",
   "author": "HyperIcon",
   "categories": [
@@ -34,5 +34,18 @@
     "design",
     "data",
     "web"
+  ],
+  "places": [
+    "home",
+    "desktop",
+    "documents",
+    "downloads",
+    "applications",
+    "pictures",
+    "music",
+    "movies",
+    "boot-disk",
+    "external-disk",
+    "network-disk"
   ]
 }

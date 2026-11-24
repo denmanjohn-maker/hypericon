@@ -23,10 +23,11 @@ final class AppModel: ObservableObject {
 
     private let engine: Engine
     private var watcher: FolderWatcher?
+    private var volumeObservers: [NSObjectProtocol] = []
 
     init() {
         let paths = AppPaths()
-        let engine = Engine(paths: paths, themeStore: ThemeStore(directories: [Self.bundledThemes, paths.userThemes]))
+        let engine = Engine(paths: paths, themeStore: ThemeStore(directories: [Self.bundledThemes, paths.userThemes]), system: .live)
         self.engine = engine
         preferences = engine.settings
         status = engine.status
@@ -41,6 +42,13 @@ final class AppModel: ObservableObject {
         }
         self.watcher = watcher
         watcher.start()
+        // Theme disks as they are plugged in, and finish restoring ones that were unplugged during a restore.
+        let center = NSWorkspace.shared.notificationCenter
+        for name in [NSWorkspace.didMountNotification, NSWorkspace.didRenameVolumeNotification] {
+            volumeObservers.append(center.addObserver(forName: name, object: nil, queue: nil) { [weak engine] _ in
+                engine?.handleVolumesChanged()
+            })
+        }
         engine.applyAll()
     }
 
@@ -87,6 +95,8 @@ final class AppModel: ObservableObject {
     func setOverrideCustomIcons(_ value: Bool) { change { $0.overrideCustomIcons = value } }
     func setPreferGit(_ value: Bool) { change { $0.preferGit = value } }
     func setMatchTagColor(_ value: Bool) { change { $0.matchTagColor = value } }
+    /// Changes one of the "Disks & favorites" settings and rescans.
+    func setPlaceOption(_ option: WritableKeyPath<Preferences, Bool>, _ value: Bool) { change { $0[keyPath: option] = value } }
 
     func addExcludedFolder() {
         let panel = NSOpenPanel()
@@ -116,7 +126,8 @@ final class AppModel: ObservableObject {
     func restoreOriginalIcons() {
         let alert = NSAlert()
         alert.messageText = "Restore original icons?"
-        alert.informativeText = "HyperIcon will remove every icon it applied and put back any custom icons you had before. "
+        alert.informativeText = "HyperIcon will remove every icon it applied to folders, favorites, your home folder and disks, "
+            + "and put back any custom icons you had before. "
             + "Theming stays off until you pick a theme again."
         alert.addButton(withTitle: "Restore")
         alert.addButton(withTitle: "Cancel")
@@ -128,7 +139,12 @@ final class AppModel: ObservableObject {
                 self.preferences = self.engine.settings
                 let done = NSAlert()
                 done.messageText = "Original icons restored"
-                done.informativeText = "\(report.restored) folders were returned to how HyperIcon found them."
+                var text = "\(report.restored) folders and disks were returned to how HyperIcon found them."
+                if report.pending > 0 {
+                    text += " \(report.pending) disks are not connected right now (or the password prompt was cancelled). "
+                        + "HyperIcon will put them back the next time it sees them."
+                }
+                done.informativeText = text
                 NSApp.activate(ignoringOtherApps: true)
                 done.runModal()
             }

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Fails if any bundled theme is missing a manifest field or a category icon."""
+"""Fails if any bundled theme is missing a manifest field, a category icon or a place icon."""
 import json
 import os
 import struct
@@ -7,18 +7,19 @@ import sys
 
 ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "Themes")
 categories = [c["id"] for c in json.load(open(os.path.join(ROOT, "categories.json")))]
+places = [p["id"] for p in json.load(open(os.path.join(ROOT, "places.json")))]
 errors = []
 
 
-def edges_transparent(path):
-    """Artwork is drawn over HyperIcon's own folder, so its outer border must be empty."""
+def edges_transparent(path, band=40):
+    """Artwork is drawn over HyperIcon's own folder, so its outer border must be empty. Place icons are whole
+    icons and may use more of the canvas, but still keep a small margin like any macOS icon."""
     try:
         from PIL import Image
     except ImportError:
         return True
     alpha = Image.open(path).convert("RGBA").getchannel("A")
     w, h = alpha.size
-    band = 40
     for box in ((0, 0, w, band), (0, h - band, w, h), (0, 0, band, h), (w - band, 0, w, h)):
         if alpha.crop(box).getbbox():
             return False
@@ -67,7 +68,16 @@ for theme in themes:
         elif name != "preview" and not edges_transparent(path):
             errors.append(f"{theme}: {name}.png is not transparent at the edges (artwork only, no folder or background)")
 
+    for place in places:
+        path = os.path.join(base, "places", f"{place}.png")
+        if not os.path.exists(path):
+            errors.append(f"{theme}: missing places/{place}.png")
+        elif png_info(path) != (512, 512):
+            errors.append(f"{theme}: places/{place}.png is not a 512x512 PNG")
+        elif not edges_transparent(path, band=16):
+            errors.append(f"{theme}: places/{place}.png reaches the edge (keep a 16 px transparent margin)")
+
 if errors:
     print("\n".join(errors))
     sys.exit(1)
-print(f"{len(themes)} themes x {len(categories)} categories OK")
+print(f"{len(themes)} themes x {len(categories)} categories + {len(places)} places OK")

@@ -22,7 +22,7 @@ public struct FolderScanner: Sendable {
         FileManager.default.fileExists(atPath: folder.appendingPathComponent(".git").path)
     }
 
-    private func isExcluded(_ path: String) -> Bool {
+    func isExcluded(_ path: String) -> Bool {
         excludedPaths.contains { path == $0 || path.hasPrefix($0 + "/") }
     }
 

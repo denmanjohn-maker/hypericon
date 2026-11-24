@@ -5,10 +5,10 @@ final class EngineTests: TempDirTestCase {
     private var home: URL!
     private var setter: FakeIconSetter!
 
-    private func makeEngine(iconSetter: IconSetter? = nil) -> Engine {
+    private func makeEngine(iconSetter: IconSetter? = nil, system: SystemPlaces = .none) -> Engine {
         let engine = Engine(paths: AppPaths(base: root.appendingPathComponent("support", isDirectory: true)),
                             themeStore: ThemeStore(directories: [Self.bundledThemes]),
-                            setter: iconSetter ?? setter, home: home)
+                            setter: iconSetter ?? setter, home: home, system: system)
         home = engine.home
         return engine
     }
@@ -44,6 +44,9 @@ final class EngineTests: TempDirTestCase {
             for category in FolderCategory.allCases {
                 XCTAssertEqual(theme.iconURL(for: category)?.lastPathComponent, "\(category.rawValue).png", "\(theme.id) is missing \(category)")
             }
+            for place in Place.allCases {
+                XCTAssertEqual(theme.placeIconURL(for: place)?.lastPathComponent, "\(place.rawValue).png", "\(theme.id) is missing \(place)")
+            }
         }
     }
 
@@ -68,7 +71,8 @@ final class EngineTests: TempDirTestCase {
         XCTAssertEqual(setter.iconName(folder("Desktop/shots")), "images")
         XCTAssertNil(setter.iconName(folder("Projects/api/internal")), "the inside of a repository is left alone")
         XCTAssertNil(setter.iconName(folder("Library")))
-        XCTAssertEqual(engine.journal.count, 9)
+        XCTAssertEqual(setter.iconName(home), "home", "the home folder gets the theme's own artwork")
+        XCTAssertEqual(engine.journal.count, 10)
         XCTAssertTrue(Xattr.has(appliedAttribute, on: folder("Projects/api")))
 
         let exclude = folder("Projects/api/.git/info/exclude")
@@ -80,7 +84,7 @@ final class EngineTests: TempDirTestCase {
         XCTAssertEqual(engine.journal.all, before)
 
         let report = engine.restoreAllNow()
-        XCTAssertEqual(report.restored, 9)
+        XCTAssertEqual(report.restored, 10)
         XCTAssertEqual(iconFiles(), [])
         XCTAssertEqual(engine.journal.count, 0)
         XCTAssertFalse(Xattr.has(appliedAttribute, on: folder("Projects/api")))
@@ -209,6 +213,139 @@ final class EngineTests: TempDirTestCase {
         XCTAssertEqual(FolderColor(labelNumber: 5), .yellow)
         XCTAssertEqual(FolderColor(labelNumber: 6), .red)
         XCTAssertEqual(FolderColor(labelNumber: 7), .orange)
+    }
+
+    // MARK: places
+
+    func testFavoritesAndHomeGetTheirOwnArtwork() {
+        let engine = makeEngine()
+        engine.update { $0.themeID = "halloween" }
+        engine.applyAllNow()
+
+        XCTAssertTrue(iconPath(folder("Documents")).hasSuffix("/halloween/places/documents.png"), iconPath(folder("Documents")))
+        XCTAssertTrue(iconPath(folder("Desktop")).hasSuffix("/halloween/places/desktop.png"))
+        XCTAssertTrue(iconPath(home).hasSuffix("/halloween/places/home.png"))
+        XCTAssertEqual(engine.journal[folder("Music").path]?.place, .music)
+        XCTAssertNil(engine.journal[folder("Music").path]?.color, "place artwork is not tag-coloured")
+        XCTAssertTrue(iconPath(folder("Documents/Reports")).contains("/halloween/blue/pdf.png"), "folders inside favorites keep content icons")
+
+        // Turned off, favorites go back to content icons and the home folder is restored.
+        engine.update {
+            $0.themeFavorites = false
+            $0.themeHome = false
+        }
+        engine.applyAllNow()
+        XCTAssertTrue(iconPath(folder("Documents")).contains("/halloween/blue/documents.png"))
+        XCTAssertNil(engine.journal[folder("Documents").path]?.place)
+        XCTAssertNil(setter.iconName(home))
+        XCTAssertNil(engine.journal[home.path])
+    }
+
+    func testThemesWithoutPlacesLeavePlacesAlone() throws {
+        let custom = root.appendingPathComponent("custom/plain", isDirectory: true)
+        try FileManager.default.createDirectory(at: custom, withIntermediateDirectories: true)
+        try FileManager.default.copyItem(at: Self.bundledThemes.appendingPathComponent("aqua-gloss/folder.png"),
+                                         to: custom.appendingPathComponent("folder.png"))
+        try Data(#"{"id": "plain", "name": "Plain"}"#.utf8).write(to: custom.appendingPathComponent("theme.json"))
+        let engine = Engine(paths: AppPaths(base: root.appendingPathComponent("support", isDirectory: true)),
+                            themeStore: ThemeStore(directories: [Self.bundledThemes, custom.deletingLastPathComponent()]),
+                            setter: setter, home: home)
+        engine.update { $0.themeID = "plain" }
+        engine.applyAllNow()
+        XCTAssertNil(setter.iconName(home))
+        XCTAssertEqual(setter.iconName(folder("Documents")), "folder", "falls back to the theme's folder artwork")
+    }
+
+    func testApplicationsFolderIsThemedAndRestored() {
+        let applications = root.appendingPathComponent("Applications", isDirectory: true)
+        make(["Applications/Editor.app/Contents/Info.plist"], in: root)
+        let engine = makeEngine(system: SystemPlaces(applications: applications))
+        engine.update { $0.themeID = "aqua-gloss" }
+        engine.applyAllNow()
+        XCTAssertTrue(iconPath(applications).hasSuffix("/aqua-gloss/places/applications.png"))
+        XCTAssertNil(setter.iconName(applications.appendingPathComponent("Editor.app")), "apps inside are left alone")
+
+        engine.restoreAllNow()
+        XCTAssertNil(setter.iconName(applications))
+        XCTAssertEqual(engine.journal.count, 0)
+    }
+
+    func testDisksAreThemedAndRestoredEvenAfterBeingUnplugged() {
+        make(["Volumes/USB/", "Volumes/Share/"], in: root)
+        let usb = MountedVolume(url: root.appendingPathComponent("Volumes/USB", isDirectory: true), uuid: "U1", place: .externalDisk)
+        let share = MountedVolume(url: root.appendingPathComponent("Volumes/Share", isDirectory: true), uuid: "N1", place: .networkDisk)
+        let volumes = FakeVolumes()
+        volumes.volumes = [usb, share]
+        let engine = makeEngine(system: SystemPlaces(volumes: volumes))
+        engine.update { $0.themeID = "synthwave-84" }
+        engine.applyAllNow()
+
+        XCTAssertTrue(iconPath(usb.url).hasSuffix("/synthwave-84/places/external-disk.png"))
+        XCTAssertNil(setter.iconName(share.url), "network shares are off by default")
+        XCTAssertEqual(engine.journal["volume:U1"]?.mountPath, usb.url.path)
+
+        engine.update { $0.themeNetworkDisks = true }
+        engine.applyAllNow()
+        XCTAssertTrue(iconPath(share.url).hasSuffix("/synthwave-84/places/network-disk.png"))
+
+        // Unplugging is not deleting: the entry survives a rescan.
+        volumes.volumes = [share]
+        engine.applyAllNow()
+        XCTAssertNotNil(engine.journal["volume:U1"])
+
+        // Restoring while it is unplugged finishes when it comes back.
+        let report = engine.restoreAllNow()
+        XCTAssertEqual(report.pending, 1)
+        XCTAssertNil(setter.iconName(share.url))
+        XCTAssertEqual(engine.journal["volume:U1"]?.pendingRestore, true)
+        XCTAssertNotNil(setter.iconName(usb.url))
+
+        volumes.volumes = [usb, share]
+        engine.applyAllNow()
+        XCTAssertNil(setter.iconName(usb.url))
+        XCTAssertEqual(engine.journal.count, 0)
+    }
+
+    func testBootDiskOnlyChangesWhenAskedAndDoesNotRepeatACancelledPrompt() {
+        let boot = FakeBootDisk()
+        let engine = makeEngine(system: SystemPlaces(bootDisk: boot))
+        engine.update { $0.themeID = "harvest" }
+        engine.applyAllNow()
+        XCTAssertEqual(boot.calls, [], "off by default")
+
+        engine.update { $0.themeBootDisk = true }
+        engine.applyAllNow()
+        XCTAssertEqual(boot.calls.count, 1)
+        XCTAssertTrue(boot.calls[0]?.path.hasSuffix("/harvest/places/boot-disk.png") == true)
+        engine.applyAllNow()
+        XCTAssertEqual(boot.calls.count, 1, "no new prompt when nothing changed")
+
+        // A cancelled prompt for a new theme is not repeated on every rescan.
+        boot.succeeds = false
+        engine.update { $0.themeID = "valentine" }
+        engine.applyAllNow()
+        engine.applyAllNow()
+        XCTAssertEqual(boot.calls.count, 2)
+        XCTAssertEqual(engine.journal["volume:boot"]?.themeID, "harvest")
+
+        boot.succeeds = true
+        let report = engine.restoreAllNow()
+        XCTAssertEqual(report.pending, 0)
+        XCTAssertNil(boot.calls.last!)
+        XCTAssertNil(engine.journal["volume:boot"])
+    }
+
+    func testOlderJournalAndSettingsStillLoad() throws {
+        let support = root.appendingPathComponent("support", isDirectory: true)
+        try FileManager.default.createDirectory(at: support, withIntermediateDirectories: true)
+        let line = #"{"set":{"path":"/tmp/x","category":"git","themeID":"halloween","gitExclude":false,"color":"red","date":0}}"#
+        try Data((line + "\n").utf8).write(to: support.appendingPathComponent("journal.jsonl"))
+        try Data(#"{"themeID":"halloween","paused":false}"#.utf8).write(to: support.appendingPathComponent("settings.json"))
+        let engine = makeEngine()
+        XCTAssertEqual(engine.journal["/tmp/x"]?.category, .git)
+        XCTAssertNil(engine.journal["/tmp/x"]?.place)
+        XCTAssertTrue(engine.settings.themeFavorites)
+        XCTAssertFalse(engine.settings.themeBootDisk)
     }
 
     /// Exercises the real Finder icon API. Skipped where the machine cannot set icons (some headless CI hosts).
