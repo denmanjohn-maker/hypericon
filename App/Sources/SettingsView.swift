@@ -1,3 +1,4 @@
+import HyperIconCore
 import SwiftUI
 
 struct SettingsView: View {
