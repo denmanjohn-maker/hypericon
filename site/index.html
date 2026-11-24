@@ -232,7 +232,7 @@ footer .wrap { display: flex; gap: 20px; flex-wrap: wrap; justify-content: space
   <section id="themes">
     <p class="kicker">Themes</p>
     <h2>Thirteen themes. One click each.</h2>
-    <p class="sub">Each theme adds its own artwork to the folder: a carved pumpkin, a gift tag, a cassette tape, an arcade screen. The symbol on it tells you what is inside, and the folder keeps the colour you gave it. Every theme covers all 27 folder types. Select one to try it on this page.</p>
+    <p class="sub">Each theme adds its own artwork to the folder: a carved pumpkin, a gift tag, a cassette tape, an arcade screen. The symbol on it tells you what is inside, and the folder keeps the colour you gave it. Every theme covers all 27 folder types, and draws its own artwork for your disks, home folder and favorites: a bubbling cauldron for Macintosh HD, a snow globe, a chrome boombox. Select one to try it on this page.</p>
     <div class="gallery" id="gallery"></div>
   </section>
 
@@ -317,6 +317,16 @@ bash restore-icons.sh</pre>
     return n;
   }
   function icon(cat, themeId, colour) { return paint(el(themeId ? 'i' : 'span', themeId ? '' : 'ico'), cat, themeId, colour); }
+  // Disks, Home and favorites are whole icons with no folder underneath.
+  var places = data.places.map(function (p) { return p.id; });
+  function placeIcon(place, themeId) {
+    var n = el('i'), i = places.indexOf(place);
+    n.style.backgroundImage = 'url("assets/sprites/' + themeId + '-places.png")';
+    n.style.backgroundSize = places.length * 100 + '% 100%';
+    n.style.backgroundPosition = i / (places.length - 1) * 100 + '% 0';
+    n.title = data.places[i].label;
+    return n;
+  }
 
   var folders = [['git', 'dotfiles'], ['node', 'web-portal', 'green'], ['python', 'data-pipeline'], ['docker', 'compose-stack'],
     ['kubernetes', 'helm-charts', 'purple'], ['terraform', 'infra-live', 'purple'], ['ci', 'build-jobs'], ['go', 'exporter', 'gray'],
@@ -362,6 +372,7 @@ bash restore-icons.sh</pre>
     var g = el('button', 'theme'), strip = el('div', 'strip'), meta = el('div', 'meta');
     g.type = 'button'; g.dataset.id = t.id;
     ['git', 'documents', 'code', 'video'].forEach(function (cat) { strip.appendChild(icon(cat, t.id)); });
+    ['boot-disk', 'external-disk', 'home', 'downloads'].forEach(function (p) { strip.appendChild(placeIcon(p, t.id)); });
     meta.appendChild(el('small', '', t.group)); meta.appendChild(el('h3', '', t.name)); meta.appendChild(el('p', '', t.description));
     g.appendChild(strip); g.appendChild(meta); gallery.appendChild(g); buttons.push(g);
   });

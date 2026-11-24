@@ -10,9 +10,13 @@ public struct EngineStatus: Equatable, Sendable {
 public struct RestoreReport: Equatable, Sendable {
     public var restored = 0
     public var missing = 0
+    /// Disks that could not be put back yet: unplugged (they are restored when connected again), or the
+    /// startup disk when the password prompt was cancelled.
+    public var pending = 0
 }
 
-/// Applies the active theme to eligible folders and can undo everything it has done.
+/// Applies the active theme to eligible folders, favorites, the home folder and disks, and can undo
+/// everything it has done.
 /// All work happens on one serial queue; public methods are safe to call from any thread.
 public final class Engine {
     public let paths: AppPaths
@@ -22,6 +26,9 @@ public final class Engine {
 
     private let themeStore: ThemeStore
     private let setter: IconSetter
+    private let system: SystemPlaces
+    /// The last startup-disk change tried, so a cancelled password prompt is not shown again on every rescan.
+    private var bootDiskAttempt: String?
     private let queue = DispatchQueue(label: "com.hypericon.engine", qos: .utility)
     private let stateLock = NSLock()
     private var _settings: Preferences
@@ -34,11 +41,12 @@ public final class Engine {
     ]
 
     public init(paths: AppPaths = AppPaths(), themeStore: ThemeStore, setter: IconSetter = WorkspaceIconSetter(),
-                home: URL = FileManager.default.homeDirectoryForCurrentUser) {
+                home: URL = FileManager.default.homeDirectoryForCurrentUser, system: SystemPlaces = .none) {
         self.paths = paths
         self.home = home.canonicalFolder
         self.themeStore = themeStore
         self.setter = setter
+        self.system = system
         paths.ensure()
         journal = Journal(url: paths.journal)
         // Finished icons are cheap to rebuild; start clean so edited themes are picked up.
@@ -114,7 +122,11 @@ public final class Engine {
 
     /// Synchronous variant of `applyAll()`, used by the command line and tests.
     public func applyAllNow() {
-        guard let context = makeContext() else { return }
+        guard let context = makeContext() else {
+            // Paused or no theme: nothing is themed, but unplugged disks waiting to be restored still are.
+            syncDisks(context: nil, includeBootDisk: false)
+            return
+        }
         let started = currentGeneration
         setStatus { $0.activity = .scanning }
         var seen = Set<String>()
@@ -126,15 +138,26 @@ public final class Engine {
             if processed % 50 == 0 { self.setStatus { _ in } }
             return self.currentGeneration == started
         }
+        applyFixedPlaces(context: context, seen: &seen)
         if currentGeneration == started {
             // Folders that were deleted or moved no longer need an entry; folders that fell out of scope get their icon back.
-            for entry in journal.all where !seen.contains(entry.path) {
+            // Disks are handled by `syncDisks`, because an unplugged disk is not gone.
+            for entry in journal.all where entry.volumeUUID == nil && entry.place != .bootDisk && !seen.contains(entry.path) {
                 restore(entry)
             }
+            syncDisks(context: context, includeBootDisk: true)
         }
         setStatus {
             $0.activity = .idle
             $0.lastScan = Date()
+        }
+    }
+
+    /// Themes disks that were just connected and restores ones that were waiting to be. Call when a disk is mounted.
+    public func handleVolumesChanged() {
+        queue.async {
+            self.syncDisks(context: self.makeContext(), includeBootDisk: false)
+            self.setStatus { _ in }
         }
     }
 
@@ -171,42 +194,165 @@ public final class Engine {
         return context.classifier.classify(folder)
     }
 
+    /// A favorite folder directly in the home folder, when favorites are themed.
+    private func favoritePlace(for folder: URL, context: Context) -> Place? {
+        guard context.settings.themeFavorites, folder.deletingLastPathComponent().path == home.path else { return nil }
+        return Place.homeFolders[folder.lastPathComponent]
+    }
+
     /// Returns true if the folder's icon was changed.
     @discardableResult
     private func apply(to folder: URL, context: Context) -> Bool {
+        if let place = favoritePlace(for: folder, context: context), let icon = context.theme.placeIconURL(for: place) {
+            return set({ icon }, on: .folder(folder), category: .folder, place: place, color: nil, context: context)
+        }
         let category = resolveCategory(for: folder, context: context)
-        let existing = journal[folder.path]
         let color = context.settings.matchTagColor ? FolderColor.of(folder) : .blue
-        let hasIcon = setter.hasCustomIcon(folder)
-        if let existing, existing.themeID == context.theme.id, existing.category == category, existing.color == color, hasIcon {
+        return set({ self.finishedIcon(for: category, color: color, theme: context.theme) }, on: .folder(folder),
+                   category: category, place: nil, color: color, context: context)
+    }
+
+    /// Something that gets an icon: a folder (keyed by its path) or a disk (keyed by its UUID).
+    private struct Target {
+        let url: URL
+        let key: String
+        let volumeUUID: String?
+
+        static func folder(_ url: URL) -> Target { Target(url: url, key: url.path, volumeUUID: nil) }
+        static func volume(_ volume: MountedVolume) -> Target { Target(url: volume.url, key: volume.journalKey, volumeUUID: volume.uuid) }
+    }
+
+    /// Gives `target` an icon, journaling it first. `makeIcon` is only called when the icon needs to change.
+    /// Returns true if the icon was changed.
+    @discardableResult
+    private func set(_ makeIcon: () -> URL?, on target: Target, category: FolderCategory, place: Place?, color: FolderColor?,
+                     context: Context) -> Bool {
+        let existing = journal[target.key]
+        let hasIcon = setter.hasCustomIcon(target.url)
+        let mountPath = target.volumeUUID == nil ? nil : target.url.path
+        if let existing, existing.themeID == context.theme.id, existing.category == category, existing.place == place,
+           existing.color == color, existing.mountPath == mountPath, existing.pendingRestore != true, hasIcon {
             return false
         }
-        guard let icon = finishedIcon(for: category, color: color, theme: context.theme) else { return false }
+        guard let icon = makeIcon() else { return false }
 
-        var entry = existing ?? JournalEntry(path: folder.path, category: category, themeID: context.theme.id)
+        var entry = existing ?? JournalEntry(path: target.key, category: category, themeID: context.theme.id)
         entry.category = category
         entry.themeID = context.theme.id
         entry.color = color
+        entry.place = place
+        entry.volumeUUID = target.volumeUUID
+        entry.mountPath = mountPath
+        entry.pendingRestore = nil
         entry.date = Date()
 
-        if existing == nil, hasIcon, !Xattr.has(appliedAttribute, on: folder) {
-            // The user gave this folder its own icon.
+        if existing == nil, hasIcon, !Xattr.has(appliedAttribute, on: target.url) {
+            // The user gave this folder or disk its own icon.
             guard context.settings.overrideCustomIcons else { return false }
             let name = UUID().uuidString + ".tiff"
-            guard setter.backUpIcon(of: folder, to: paths.backups.appendingPathComponent(name)) else { return false }
+            guard setter.backUpIcon(of: target.url, to: paths.backups.appendingPathComponent(name)) else { return false }
             entry.backup = name
         }
-        if FolderScanner.isGitRepository(folder), !entry.gitExclude {
-            entry.gitExclude = GitExclude.add(to: folder)
+        if target.volumeUUID == nil, FolderScanner.isGitRepository(target.url), !entry.gitExclude {
+            entry.gitExclude = GitExclude.add(to: target.url)
         }
 
         journal.record(entry)
-        guard setter.setIcon(icon, for: folder) else {
+        guard setter.setIcon(icon, for: target.url) else {
             if existing == nil { undoBookkeeping(entry) }
             return false
         }
-        Xattr.set(appliedAttribute, value: "\(context.theme.id)/\(category.rawValue)", on: folder)
+        Xattr.set(appliedAttribute, value: "\(context.theme.id)/\(place?.rawValue ?? category.rawValue)", on: target.url)
         return true
+    }
+
+    // MARK: places outside the scan
+
+    /// The home folder and /Applications, which the scanner never visits. Adds the ones that are themed to `seen`.
+    private func applyFixedPlaces(context: Context, seen: inout Set<String>) {
+        var places: [(URL, Place, Bool)] = [(home, .home, context.settings.themeHome)]
+        if let applications = system.applications {
+            places.append((applications.canonicalFolder, .applications, context.settings.themeFavorites))
+        }
+        for (url, place, enabled) in places where enabled && !context.scanner.isExcluded(url.path) {
+            guard let icon = context.theme.placeIconURL(for: place) else { continue }
+            // /Applications is only writable by administrators; for anyone else this quietly does nothing.
+            set({ icon }, on: .folder(url), category: .folder, place: place, color: nil, context: context)
+            if journal[url.path] != nil { seen.insert(url.path) }
+        }
+    }
+
+    /// The artwork a disk of this kind should get, or nil if it should not be themed.
+    private func diskIcon(for place: Place, at url: URL?, context: Context) -> URL? {
+        let settings = context.settings
+        let enabled: Bool
+        switch place {
+        case .externalDisk: enabled = settings.themeExternalDisks
+        case .networkDisk: enabled = settings.themeNetworkDisks
+        case .bootDisk: enabled = settings.themeBootDisk
+        default: enabled = false
+        }
+        if let url, context.scanner.isExcluded(url.canonicalFolder.path) { return nil }
+        return enabled ? context.theme.placeIconURL(for: place) : nil
+    }
+
+    /// Brings mounted disks in line with the settings. Without a context (paused, or no theme) it only finishes
+    /// restoring disks that were unplugged during a restore.
+    private func syncDisks(context: Context?, includeBootDisk: Bool) {
+        if let volumes = system.volumes {
+            let mounted = volumes.mounted()
+            let byUUID = Dictionary(mounted.map { ($0.uuid, $0) }, uniquingKeysWith: { first, _ in first })
+            for entry in journal.all {
+                guard let uuid = entry.volumeUUID, let volume = byUUID[uuid] else { continue }
+                if let context {
+                    if diskIcon(for: volume.place, at: volume.url, context: context) == nil { restore(entry) }
+                } else if entry.pendingRestore == true {
+                    restore(entry)
+                }
+            }
+            if let context {
+                for volume in mounted {
+                    guard let icon = diskIcon(for: volume.place, at: volume.url, context: context) else { continue }
+                    set({ icon }, on: .volume(volume), category: .folder, place: volume.place, color: nil, context: context)
+                }
+            }
+        }
+        if includeBootDisk, let context { syncBootDisk(context: context) }
+    }
+
+    private static let bootDiskKey = "volume:boot"
+
+    /// Themes or restores the startup disk. Each change asks for a password, so it only happens when the wanted
+    /// icon differs from what was applied, and a cancelled prompt is not repeated until settings change.
+    private func syncBootDisk(context: Context) {
+        guard let boot = system.bootDisk else { return }
+        let existing = journal[Self.bootDiskKey]
+        let icon = diskIcon(for: .bootDisk, at: nil, context: context)
+        let wanted = icon == nil ? "off" : context.theme.id
+        if icon == nil, existing == nil { return }
+        if let existing, icon != nil, existing.themeID == context.theme.id, boot.hasCustomIcon() { return }
+        let attempt = "\(wanted)#\(currentGeneration)"
+        guard bootDiskAttempt != attempt else { return }
+        bootDiskAttempt = attempt
+
+        guard let icon else {
+            if let existing { restore(existing) }
+            return
+        }
+        var entry = existing ?? JournalEntry(path: Self.bootDiskKey, category: .folder, themeID: context.theme.id, place: .bootDisk)
+        if existing == nil, boot.hasCustomIcon() {
+            guard context.settings.overrideCustomIcons else { return }
+            let name = UUID().uuidString + ".icns"
+            guard boot.backUpIcon(to: paths.backups.appendingPathComponent(name)) else { return }
+            entry.backup = name
+        }
+        entry.themeID = context.theme.id
+        entry.date = Date()
+        journal.record(entry)
+        guard boot.setIcon(icon, restoring: nil) else {
+            if let existing { journal.record(existing) } else { undoBookkeeping(entry) }
+            return
+        }
     }
 
     /// The finished icon: the theme's artwork drawn on a plain folder in `color`.
@@ -225,12 +371,34 @@ public final class Engine {
         journal.remove(entry.path)
     }
 
-    /// Puts one folder back exactly as HyperIcon found it. Returns false if the folder no longer exists.
+    private enum RestoreOutcome { case restored, missing, pending }
+
+    /// Puts one folder or disk back exactly as HyperIcon found it.
     @discardableResult
-    private func restore(_ entry: JournalEntry) -> Bool {
-        let folder = URL(fileURLWithPath: entry.path, isDirectory: true)
+    private func restore(_ entry: JournalEntry) -> RestoreOutcome {
+        if entry.place == .bootDisk {
+            guard let boot = system.bootDisk,
+                  boot.setIcon(nil, restoring: entry.backup.map { paths.backups.appendingPathComponent($0) }) else { return .pending }
+            undoBookkeeping(entry)
+            return .restored
+        }
+        let folder: URL
+        if let uuid = entry.volumeUUID {
+            guard let volume = system.volumes?.mounted().first(where: { $0.uuid == uuid }) else {
+                // Unplugged. Keep the entry so the disk is put back the next time it is connected.
+                if entry.pendingRestore != true {
+                    var pending = entry
+                    pending.pendingRestore = true
+                    journal.record(pending)
+                }
+                return .pending
+            }
+            folder = volume.url
+        } else {
+            folder = URL(fileURLWithPath: entry.path, isDirectory: true)
+        }
         var isDir: ObjCBool = false
-        let exists = FileManager.default.fileExists(atPath: entry.path, isDirectory: &isDir) && isDir.boolValue
+        let exists = FileManager.default.fileExists(atPath: folder.path, isDirectory: &isDir) && isDir.boolValue
         if exists {
             setter.setIcon(nil, for: folder)
             Xattr.remove(appliedAttribute, from: folder)
@@ -239,7 +407,7 @@ public final class Engine {
             }
         }
         undoBookkeeping(entry)
-        return exists
+        return exists ? .restored : .missing
     }
 
     /// Removes every icon HyperIcon applied and pauses theming. Returns immediately.
@@ -260,7 +428,11 @@ public final class Engine {
         setStatus { $0.activity = .restoring }
         var report = RestoreReport()
         for entry in journal.all {
-            if restore(entry) { report.restored += 1 } else { report.missing += 1 }
+            switch restore(entry) {
+            case .restored: report.restored += 1
+            case .missing: report.missing += 1
+            case .pending: report.pending += 1
+            }
         }
         if deep { report.restored += sweep() }
         setStatus { $0.activity = .idle }
@@ -269,6 +441,15 @@ public final class Engine {
 
     private func sweep() -> Int {
         var count = 0
+        // Places outside the walk below: the home folder itself, /Applications and mounted disks.
+        var roots = [home]
+        if let applications = system.applications { roots.append(applications) }
+        roots += system.volumes?.mounted().map(\.url) ?? []
+        for url in roots where Xattr.has(appliedAttribute, on: url) {
+            setter.setIcon(nil, for: url)
+            Xattr.remove(appliedAttribute, from: url)
+            count += 1
+        }
         let keys: [URLResourceKey] = [.isDirectoryKey]
         guard let walker = FileManager.default.enumerator(at: home, includingPropertiesForKeys: keys, options: [.skipsPackageDescendants]) else {
             return 0

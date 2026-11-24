@@ -1,5 +1,5 @@
 #!/bin/bash
-# Removes every folder icon HyperIcon applied, without needing the app.
+# Removes every folder and disk icon HyperIcon applied, without needing the app.
 # Use this if you deleted HyperIcon before choosing "Restore Original Icons".
 #
 #   bash restore-icons.sh
@@ -36,8 +36,18 @@ while IFS= read -r -d '' dir; do
   restore_folder "$dir"
 done < <(find "$HOME" \( -path "$HOME/Library" -o -name node_modules -o -name .git \) -prune -o -type d -xattrname "$ATTR" -print0 2>/dev/null)
 
+# The Applications folder and connected disks (disks that are not connected now keep their icon).
+for dir in /Applications /Volumes/*; do
+  restore_folder "$dir"
+done
+
 echo
-echo "Restored $count folders."
+echo "Restored $count folders and disks."
+if [ -f /System/Volumes/Data/.VolumeIcon.icns ]; then
+  echo
+  echo "Your startup disk has a custom icon. If HyperIcon set it, remove it with:"
+  echo "  sudo rm /System/Volumes/Data/.VolumeIcon.icns"
+fi
 if [ -d "$SUPPORT" ]; then
   echo "HyperIcon's own data is in: $SUPPORT"
   echo "It is safe to delete once you are happy with the result."

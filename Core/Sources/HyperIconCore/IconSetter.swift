@@ -1,5 +1,8 @@
 import AppKit
 
+/// The file a disk's custom icon is stored in, at the root of the disk.
+public let volumeIconFileName = ".VolumeIcon.icns"
+
 /// The only code that touches Finder icons. Abstracted so the engine can be tested without Finder.
 public protocol IconSetter: AnyObject {
     /// Sets the folder's custom icon from an image file, or removes it when `imageURL` is nil.
@@ -34,7 +37,10 @@ public final class WorkspaceIconSetter: IconSetter {
     }
 
     public func hasCustomIcon(_ folder: URL) -> Bool {
-        FileManager.default.fileExists(atPath: folder.appendingPathComponent(iconFileName).path)
+        // Folders keep their icon in a hidden `Icon\r` file; disks keep it in `.VolumeIcon.icns` at their root.
+        let fm = FileManager.default
+        return fm.fileExists(atPath: folder.appendingPathComponent(iconFileName).path)
+            || fm.fileExists(atPath: folder.appendingPathComponent(volumeIconFileName).path)
     }
 
     public func backUpIcon(of folder: URL, to destination: URL) -> Bool {

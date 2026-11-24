@@ -11,13 +11,13 @@ public enum CommandLineTool {
       apply <theme-id>  Apply a theme to the home folder
       status            Show the active theme and how many folders are themed
       classify <path>   Show which icon a folder would get
-      restore [--deep]  Remove every HyperIcon icon and put original icons back.
+      restore [--deep]  Remove every HyperIcon icon (folders, favorites, Home and disks) and put originals back.
                         --deep also searches the home folder for icons the journal does not list.
     """
 
     public static func run(_ arguments: [String], themeDirectories: [URL]) -> Int32 {
         let paths = AppPaths()
-        let engine = Engine(paths: paths, themeStore: ThemeStore(directories: themeDirectories + [paths.userThemes]))
+        let engine = Engine(paths: paths, themeStore: ThemeStore(directories: themeDirectories + [paths.userThemes]), system: .live)
         switch arguments.first {
         case "themes":
             for theme in engine.themes { print("\(theme.id)\t\(theme.name) (\(theme.group))") }
@@ -42,7 +42,10 @@ public enum CommandLineTool {
             print(classifier.classify(URL(fileURLWithPath: arguments[1], isDirectory: true)).rawValue)
         case "restore":
             let report = engine.restoreAllNow(deep: arguments.contains("--deep"))
-            print("Restored \(report.restored) folders. \(report.missing) no longer exist.")
+            print("Restored \(report.restored) folders and disks. \(report.missing) no longer exist.")
+            if report.pending > 0 {
+                print("\(report.pending) disks are not connected (or the password prompt was cancelled); they are restored when HyperIcon next sees them.")
+            }
         default:
             print(usage)
             return arguments.first == "help" ? 0 : 2

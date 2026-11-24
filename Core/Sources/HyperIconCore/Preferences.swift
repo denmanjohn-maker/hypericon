@@ -37,6 +37,16 @@ public struct Preferences: Codable, Equatable, Sendable {
     public var matchTagColor = true
     /// Absolute paths that are never themed, along with everything inside them.
     public var excludedPaths: [String] = []
+    /// Give Desktop, Documents, Downloads, Pictures, Music, Movies and Applications the theme's own artwork.
+    public var themeFavorites = true
+    /// Give the home folder the theme's own artwork.
+    public var themeHome = true
+    /// Theme external, USB and other non-startup disks.
+    public var themeExternalDisks = true
+    /// Theme network shares. Off by default: the icon is saved on the server, where others may see it.
+    public var themeNetworkDisks = false
+    /// Theme the startup disk. Off by default: it asks for an administrator password.
+    public var themeBootDisk = false
 
     public init() {}
 
@@ -49,6 +59,11 @@ public struct Preferences: Codable, Equatable, Sendable {
         preferGit = try c.decodeIfPresent(Bool.self, forKey: .preferGit) ?? false
         matchTagColor = try c.decodeIfPresent(Bool.self, forKey: .matchTagColor) ?? true
         excludedPaths = try c.decodeIfPresent([String].self, forKey: .excludedPaths) ?? []
+        themeFavorites = try c.decodeIfPresent(Bool.self, forKey: .themeFavorites) ?? true
+        themeHome = try c.decodeIfPresent(Bool.self, forKey: .themeHome) ?? true
+        themeExternalDisks = try c.decodeIfPresent(Bool.self, forKey: .themeExternalDisks) ?? true
+        themeNetworkDisks = try c.decodeIfPresent(Bool.self, forKey: .themeNetworkDisks) ?? false
+        themeBootDisk = try c.decodeIfPresent(Bool.self, forKey: .themeBootDisk) ?? false
     }
 
     public static func load(from url: URL) -> Preferences {

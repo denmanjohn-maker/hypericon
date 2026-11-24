@@ -1,3 +1,4 @@
+import HyperIconCore
 import SwiftUI
 
 struct SettingsView: View {
@@ -34,6 +35,24 @@ struct SettingsView: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
+            Section("Disks & favorites") {
+                placeToggle("Theme favorite folders", \.themeFavorites)
+                Text("Desktop, Documents, Downloads, Pictures, Music, Movies and Applications get the theme's own artwork. "
+                     + "The Finder sidebar always shows its own small symbols, so the new icons appear in Finder windows, "
+                     + "the path bar, Get Info and the Dock.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                placeToggle("Theme my home folder", \.themeHome)
+                placeToggle("Theme external and USB drives", \.themeExternalDisks)
+                placeToggle("Theme network shares", \.themeNetworkDisks)
+                Text("A network share's icon is saved on the server, so other people who use it may see it too.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                placeToggle("Theme Macintosh HD", \.themeBootDisk)
+                Text("Changing the startup disk's icon asks for your password each time you pick a new theme or restore.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
             Section("Excluded folders") {
                 if model.preferences.excludedPaths.isEmpty {
                     Text("No folders excluded.").foregroundStyle(.secondary)
@@ -63,6 +82,10 @@ struct SettingsView: View {
             }
         }
         .formStyle(.grouped)
-        .frame(width: 480, height: 560)
+        .frame(width: 480, height: 640)
+    }
+
+    private func placeToggle(_ title: String, _ option: WritableKeyPath<Preferences, Bool>) -> some View {
+        Toggle(title, isOn: Binding(get: { model.preferences[keyPath: option] }, set: { model.setPlaceOption(option, $0) }))
     }
 }

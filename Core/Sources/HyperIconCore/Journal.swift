@@ -1,7 +1,8 @@
 import Foundation
 
-/// One folder HyperIcon has changed, and what is needed to undo it.
+/// One folder or disk HyperIcon has changed, and what is needed to undo it.
 public struct JournalEntry: Codable, Equatable, Sendable {
+    /// The folder's path. For disks, a stable key (`volume:<uuid>` or `volume:boot`); see `mountPath`.
     public var path: String
     public var category: FolderCategory
     public var themeID: String
@@ -11,16 +12,27 @@ public struct JournalEntry: Codable, Equatable, Sendable {
     public var gitExclude: Bool
     /// The folder colour the current icon was drawn in.
     public var color: FolderColor?
+    /// Set when the icon is standalone place artwork (a favorite, Home or a disk) rather than folder artwork.
+    public var place: Place?
+    /// For disks other than the startup disk: the disk's UUID and where it was last mounted.
+    public var volumeUUID: String?
+    public var mountPath: String?
+    /// A disk that was unplugged when the user restored. Its icon is removed the next time it is connected.
+    public var pendingRestore: Bool?
     public var date: Date
 
     public init(path: String, category: FolderCategory, themeID: String, backup: String? = nil, gitExclude: Bool = false,
-                color: FolderColor? = nil, date: Date = Date()) {
+                color: FolderColor? = nil, place: Place? = nil, volumeUUID: String? = nil, mountPath: String? = nil,
+                date: Date = Date()) {
         self.path = path
         self.category = category
         self.themeID = themeID
         self.backup = backup
         self.gitExclude = gitExclude
         self.color = color
+        self.place = place
+        self.volumeUUID = volumeUUID
+        self.mountPath = mountPath
         self.date = date
     }
 }

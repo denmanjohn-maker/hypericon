@@ -3,7 +3,7 @@
   "name": "Harvest",
   "group": "Holidays",
   "description": "Wooden crates with branded symbols and a sheaf of wheat.",
-  "version": 3,
+  "version": 4,
   "format": "artwork",
   "author": "HyperIcon",
   "categories": [
@@ -34,5 +34,18 @@
     "design",
     "data",
     "web"
+  ],
+  "places": [
+    "home",
+    "desktop",
+    "documents",
+    "downloads",
+    "applications",
+    "pictures",
+    "music",
+    "movies",
+    "boot-disk",
+    "external-disk",
+    "network-disk"
   ]
 }

@@ -6,6 +6,9 @@ artwork layer (a themed object carrying the content symbol) that the app draws o
 folder in the colour of the folder's Finder tag. The plain folders, one per tag colour, are rendered
 to Themes/_base/. Rendering uses headless Chromium (tools/icongen/render.js).
 
+Each theme also gets standalone place icons (favorite folders, the home folder and disks) in
+Themes/<id>/places/, drawn by tools/icongen/places.py. Those are the whole icon: no folder, no colour.
+
 Usage: python3 tools/icongen/gen.py [theme-id ...]     (base folders are always rebuilt)
        python3 tools/icongen/gen.py appicon
 """
@@ -18,7 +21,8 @@ import tempfile
 from PIL import Image, ImageColor
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from glyphs import CATEGORIES, GLYPHS, LABELS  # noqa: E402
+from glyphs import CATEGORIES, GLYPHS, LABELS, PLACE_LABELS, PLACES  # noqa: E402
+import places  # noqa: E402
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 OUT = os.path.join(ROOT, "Themes")
@@ -362,7 +366,10 @@ def pixelate(img, grid):
 
 
 def composite(theme_id, cat, colour="blue"):
-    """What the app draws: the base folder in a tag colour with the theme's artwork on top."""
+    """What the app draws: the base folder in a tag colour with the theme's artwork on top.
+    `cat` may also be "places/<place>", which is used as is."""
+    if cat.startswith("places/"):
+        return Image.open(os.path.join(OUT, theme_id, f"{cat}.png")).convert("RGBA")
     img = Image.open(os.path.join(OUT, "_base", f"{colour}.png")).convert("RGBA")
     img.alpha_composite(Image.open(os.path.join(OUT, theme_id, f"{cat}.png")).convert("RGBA"))
     return img
@@ -447,26 +454,32 @@ def main():
     for t in themes:
         os.makedirs(os.path.join(OUT, t["id"]), exist_ok=True)
         jobs += [{"svgtext": t["build"](c), "png": os.path.join(OUT, t["id"], f"{c}.png"), "size": SIZE} for c in CATEGORIES]
+        os.makedirs(os.path.join(OUT, t["id"], "places"), exist_ok=True)
+        jobs += [{"svgtext": places.build(t["id"], p), "png": os.path.join(OUT, t["id"], "places", f"{p}.png"), "size": SIZE} for p in PLACES]
     render(jobs)
 
     for t in themes:
         d = os.path.join(OUT, t["id"])
-        for c in CATEGORIES:
+        for c in CATEGORIES + [f"places/{p}" for p in PLACES]:
             p = os.path.join(d, f"{c}.png")
             img = Image.open(p).convert("RGBA")
             if t.get("pixel"):
                 img = pixelate(img, t["pixel"])
             img.save(p, optimize=True)
         meta = {k: t[k] for k in ("id", "name", "group", "description")}
-        meta.update(version=3, format="artwork", author="HyperIcon", categories=CATEGORIES)
+        meta.update(version=4, format="artwork", author="HyperIcon", categories=CATEGORIES, places=PLACES)
         with open(os.path.join(d, "theme.json"), "w") as f:
             json.dump(meta, f, indent=2)
             f.write("\n")
-        contact_sheet(t, ["folder", "git", "documents", "images", "music", "code"], 3, 128, os.path.join(d, "preview.png"))
+        contact_sheet(t, ["folder", "git", "documents", "places/boot-disk", "places/external-disk", "places/home"], 3, 128,
+                      os.path.join(d, "preview.png"))
         print("built", t["id"])
 
     with open(os.path.join(OUT, "categories.json"), "w") as f:
         json.dump([{"id": c, "label": LABELS[c]} for c in CATEGORIES], f, indent=2)
+        f.write("\n")
+    with open(os.path.join(OUT, "places.json"), "w") as f:
+        json.dump([{"id": p, "label": PLACE_LABELS[p]} for p in PLACES], f, indent=2)
         f.write("\n")
 
 

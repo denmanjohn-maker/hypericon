@@ -141,3 +141,33 @@ LABELS = {
     "music": "Music", "video": "Video", "code": "Source code", "archives": "Archives", "fonts": "Fonts",
     "books": "Books", "design": "Design / 3D", "data": "Data", "web": "Web",
 }
+
+# Glyphs for places (favorite folders). Pictures, music and movies reuse the category glyphs above.
+PLACE_GLYPHS = {
+    "desktop": (
+        f'<rect {W} x="6" y="12" width="88" height="60" rx="7"/><rect {K} x="14" y="20" width="72" height="44" rx="2"/>'
+        f'<path {W} d="M20 56 38 38 50 50 62 40 80 56Z"/>'
+        f'<path {W} d="M40 72H60L64 84H36Z"/><rect {W} x="24" y="84" width="52" height="9" rx="4.5"/>'
+    ),
+    "documents": GLYPHS["documents"],
+    "downloads": (
+        f'<path {W} d="M38 6H62V40H80L50 70 20 40H38Z"/>'
+        f'<path {SW} stroke-width="10" d="M12 64V86H88V64"/>'
+    ),
+    "applications": "".join(
+        f'<rect {W} x="{x}" y="{y}" width="24" height="24" rx="7"/>' for y in (8, 38, 68) for x in (8, 38, 68)
+    ),
+    "pictures": GLYPHS["images"],
+    "music": GLYPHS["music"],
+    "movies": GLYPHS["video"],
+    "house": f'<path {W} d="M50 8 94 46H82V92H60V64H40V92H18V46H6Z"/>',
+}
+
+FAVORITES = ["desktop", "documents", "downloads", "applications", "pictures", "music", "movies"]
+DISKS = ["boot-disk", "external-disk", "network-disk"]
+PLACES = ["home"] + FAVORITES + DISKS
+PLACE_LABELS = {
+    "home": "Home folder", "desktop": "Desktop", "documents": "Documents", "downloads": "Downloads",
+    "applications": "Applications", "pictures": "Pictures", "music": "Music", "movies": "Movies",
+    "boot-disk": "Startup disk (Macintosh HD)", "external-disk": "External and USB drives", "network-disk": "Network shares",
+}

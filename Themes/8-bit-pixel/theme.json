@@ -3,7 +3,7 @@
   "name": "8-Bit Pixel",
   "group": "Computer Retro",
   "description": "Chunky low-resolution pixel badges.",
-  "version": 3,
+  "version": 4,
   "format": "artwork",
   "author": "HyperIcon",
   "categories": [
@@ -34,5 +34,18 @@
     "design",
     "data",
     "web"
+  ],
+  "places": [
+    "home",
+    "desktop",
+    "documents",
+    "downloads",
+    "applications",
+    "pictures",
+    "music",
+    "movies",
+    "boot-disk",
+    "external-disk",
+    "network-disk"
   ]
 }
