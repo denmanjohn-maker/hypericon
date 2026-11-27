@@ -4,8 +4,15 @@ import XCTest
 
 /// Stands in for Finder: a custom icon is represented by an `Icon\r` file holding the image path.
 final class FakeIconSetter: IconSetter {
+    /// Folders where setting an icon fails, as if they were on a read-only share.
+    var failing: Set<URL> = []
+    /// How many times an icon was set (not removed) on each folder.
+    var setCounts: [URL: Int] = [:]
+
     @discardableResult
     func setIcon(_ imageURL: URL?, for folder: URL) -> Bool {
+        if imageURL != nil { setCounts[folder, default: 0] += 1 }
+        if failing.contains(folder) { return false }
         let file = folder.appendingPathComponent(iconFileName)
         try? FileManager.default.removeItem(at: file)
         guard let imageURL else { return true }
@@ -62,7 +69,12 @@ class TempDirTestCase: XCTestCase {
 /// Stands in for mounted disks: whatever is in `volumes` is "plugged in".
 final class FakeVolumes: VolumeListing {
     var volumes: [MountedVolume] = []
-    func mounted() -> [MountedVolume] { volumes }
+    /// The kinds asked for on each call, so tests can check disks are not looked at needlessly.
+    var requests: [Set<Place>] = []
+    func mounted(kinds: Set<Place>) -> [MountedVolume] {
+        requests.append(kinds)
+        return volumes.filter { kinds.contains($0.place) }
+    }
 }
 
 /// Stands in for the startup disk. Records each change instead of asking for a password.

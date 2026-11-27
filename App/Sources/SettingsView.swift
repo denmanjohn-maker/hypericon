@@ -49,7 +49,8 @@ struct SettingsView: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
                 placeToggle("Theme Macintosh HD", \.themeBootDisk)
-                Text("Changing the startup disk's icon asks for your password each time you pick a new theme or restore.")
+                Text("Asks for your password once to set up the startup disk's icon. Changing themes after that doesn't ask again; "
+                     + "restoring the original icon may ask once more.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }

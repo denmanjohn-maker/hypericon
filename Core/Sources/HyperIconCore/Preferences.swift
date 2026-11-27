@@ -47,6 +47,9 @@ public struct Preferences: Codable, Equatable, Sendable {
     public var themeNetworkDisks = false
     /// Theme the startup disk. Off by default: it asks for an administrator password.
     public var themeBootDisk = false
+    /// The startup-disk change ("off" or a theme ID) whose password prompt was cancelled. It is not asked
+    /// again, even after a relaunch, until the user picks another theme or turns the setting back on.
+    public var declinedBootDiskChange: String?
 
     public init() {}
 
@@ -64,6 +67,7 @@ public struct Preferences: Codable, Equatable, Sendable {
         themeExternalDisks = try c.decodeIfPresent(Bool.self, forKey: .themeExternalDisks) ?? true
         themeNetworkDisks = try c.decodeIfPresent(Bool.self, forKey: .themeNetworkDisks) ?? false
         themeBootDisk = try c.decodeIfPresent(Bool.self, forKey: .themeBootDisk) ?? false
+        declinedBootDiskChange = try c.decodeIfPresent(String.self, forKey: .declinedBootDiskChange)
     }
 
     public static func load(from url: URL) -> Preferences {

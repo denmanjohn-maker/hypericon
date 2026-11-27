@@ -27,8 +27,9 @@ public final class Engine {
     private let themeStore: ThemeStore
     private let setter: IconSetter
     private let system: SystemPlaces
-    /// The last startup-disk change tried, so a cancelled password prompt is not shown again on every rescan.
-    private var bootDiskAttempt: String?
+    /// Disks whose icon could not be set (for example a read-only network share), by UUID, with the settings
+    /// generation they failed in. They are not tried again until settings change or a disk is mounted.
+    private var failedVolumes: [String: Int] = [:]
     private let queue = DispatchQueue(label: "com.hypericon.engine", qos: .utility)
     private let stateLock = NSLock()
     private var _settings: Preferences
@@ -77,6 +78,16 @@ public final class Engine {
         change(&_settings)
         let snapshot = _settings
         generation += 1
+        stateLock.unlock()
+        snapshot.save(to: paths.settings)
+    }
+
+    /// Saves a change HyperIcon makes on its own, without counting as a settings change (which would stop a
+    /// scan in progress and retry disks that failed).
+    private func record(_ change: (inout Preferences) -> Void) {
+        stateLock.lock()
+        change(&_settings)
+        let snapshot = _settings
         stateLock.unlock()
         snapshot.save(to: paths.settings)
     }
@@ -156,6 +167,8 @@ public final class Engine {
     /// Themes disks that were just connected and restores ones that were waiting to be. Call when a disk is mounted.
     public func handleVolumesChanged() {
         queue.async {
+            // A disk that was just plugged in (or plugged in again) gets a fresh try.
+            self.failedVolumes.removeAll()
             self.syncDisks(context: self.makeContext(), includeBootDisk: false)
             self.setStatus { _ in }
         }
@@ -234,6 +247,13 @@ public final class Engine {
            existing.color == color, existing.mountPath == mountPath, existing.pendingRestore != true, hasIcon {
             return false
         }
+        if let uuid = target.volumeUUID {
+            if failedVolumes[uuid] == currentGeneration { return false }
+            guard FileManager.default.isWritableFile(atPath: target.url.path) else {
+                failedVolumes[uuid] = currentGeneration
+                return false
+            }
+        }
         guard let icon = makeIcon() else { return false }
 
         var entry = existing ?? JournalEntry(path: target.key, category: category, themeID: context.theme.id)
@@ -260,6 +280,7 @@ public final class Engine {
         journal.record(entry)
         guard setter.setIcon(icon, for: target.url) else {
             if existing == nil { undoBookkeeping(entry) }
+            if let uuid = target.volumeUUID { failedVolumes[uuid] = currentGeneration }
             return false
         }
         Xattr.set(appliedAttribute, value: "\(context.theme.id)/\(place?.rawValue ?? category.rawValue)", on: target.url)
@@ -296,11 +317,35 @@ public final class Engine {
         return enabled ? context.theme.placeIconURL(for: place) : nil
     }
 
+    /// The kinds of disk that are themed in `settings`.
+    private static func enabledDiskKinds(_ settings: Preferences) -> Set<Place> {
+        var kinds = Set<Place>()
+        if settings.themeExternalDisks { kinds.insert(.externalDisk) }
+        if settings.themeNetworkDisks { kinds.insert(.networkDisk) }
+        return kinds
+    }
+
+    /// The kinds of disk HyperIcon has an icon on (or is waiting to restore).
+    private var journaledDiskKinds: Set<Place> {
+        var kinds = Set<Place>()
+        for entry in journal.all where entry.volumeUUID != nil {
+            if let place = entry.place, place != .bootDisk {
+                kinds.insert(place)
+            } else {
+                kinds.formUnion([.externalDisk, .networkDisk])
+            }
+        }
+        return kinds
+    }
+
     /// Brings mounted disks in line with the settings. Without a context (paused, or no theme) it only finishes
     /// restoring disks that were unplugged during a restore.
     private func syncDisks(context: Context?, includeBootDisk: Bool) {
-        if let volumes = system.volumes {
-            let mounted = volumes.mounted()
+        // Disks are only looked at when some kind is themed or HyperIcon still has an icon on one, so macOS
+        // does not ask for access to removable and network volumes for nothing.
+        let kinds = (context.map { Self.enabledDiskKinds($0.settings) } ?? []).union(journaledDiskKinds)
+        if let volumes = system.volumes, !kinds.isEmpty {
+            let mounted = volumes.mounted(kinds: kinds)
             let byUUID = Dictionary(mounted.map { ($0.uuid, $0) }, uniquingKeysWith: { first, _ in first })
             for entry in journal.all {
                 guard let uuid = entry.volumeUUID, let volume = byUUID[uuid] else { continue }
@@ -331,12 +376,11 @@ public final class Engine {
         let wanted = icon == nil ? "off" : context.theme.id
         if icon == nil, existing == nil { return }
         if let existing, icon != nil, existing.themeID == context.theme.id, boot.hasCustomIcon() { return }
-        let attempt = "\(wanted)#\(currentGeneration)"
-        guard bootDiskAttempt != attempt else { return }
-        bootDiskAttempt = attempt
+        // A prompt the user cancelled is not shown again until they pick another theme or turn the setting back on.
+        guard context.settings.declinedBootDiskChange != wanted else { return }
 
         guard let icon else {
-            if let existing { restore(existing) }
+            if let existing, restore(existing) == .pending { record { $0.declinedBootDiskChange = wanted } }
             return
         }
         var entry = existing ?? JournalEntry(path: Self.bootDiskKey, category: .folder, themeID: context.theme.id, place: .bootDisk)
@@ -351,6 +395,7 @@ public final class Engine {
         journal.record(entry)
         guard boot.setIcon(icon, restoring: nil) else {
             if let existing { journal.record(existing) } else { undoBookkeeping(entry) }
+            record { $0.declinedBootDiskChange = wanted }
             return
         }
     }
@@ -384,7 +429,8 @@ public final class Engine {
         }
         let folder: URL
         if let uuid = entry.volumeUUID {
-            guard let volume = system.volumes?.mounted().first(where: { $0.uuid == uuid }) else {
+            let kinds: Set<Place> = entry.place.map { Set([$0]) } ?? [.externalDisk, .networkDisk]
+            guard let volume = system.volumes?.mounted(kinds: kinds).first(where: { $0.uuid == uuid }) else {
                 // Unplugged. Keep the entry so the disk is put back the next time it is connected.
                 if entry.pendingRestore != true {
                     var pending = entry
@@ -426,6 +472,8 @@ public final class Engine {
             $0.themeID = nil
         }
         setStatus { $0.activity = .restoring }
+        // Taken before the journal empties, so the sweep only opens disks HyperIcon themed or may have themed.
+        let sweepKinds = Self.enabledDiskKinds(settings).union(journaledDiskKinds)
         var report = RestoreReport()
         for entry in journal.all {
             switch restore(entry) {
@@ -434,17 +482,17 @@ public final class Engine {
             case .pending: report.pending += 1
             }
         }
-        if deep { report.restored += sweep() }
+        if deep { report.restored += sweep(diskKinds: sweepKinds) }
         setStatus { $0.activity = .idle }
         return report
     }
 
-    private func sweep() -> Int {
+    private func sweep(diskKinds: Set<Place>) -> Int {
         var count = 0
         // Places outside the walk below: the home folder itself, /Applications and mounted disks.
         var roots = [home]
         if let applications = system.applications { roots.append(applications) }
-        roots += system.volumes?.mounted().map(\.url) ?? []
+        if !diskKinds.isEmpty { roots += system.volumes?.mounted(kinds: diskKinds).map(\.url) ?? [] }
         for url in roots where Xattr.has(appliedAttribute, on: url) {
             setter.setIcon(nil, for: url)
             Xattr.remove(appliedAttribute, from: url)

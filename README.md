@@ -71,7 +71,7 @@ Each one is a setting under **Settings → Disks & favorites**:
 | Theme my home folder | On | |
 | Theme external and USB drives | On | Applied when a drive is connected. A drive that is unplugged when you restore is put back the next time you connect it. Read-only disks and Time Machine disks are skipped. |
 | Theme network shares | Off | The icon is saved on the server, so other people who use the share may see it. |
-| Theme Macintosh HD | Off | Changing the startup disk's icon asks for your administrator password, once each time you pick a new theme or restore. |
+| Theme Macintosh HD | Off | Asks for your administrator password once, the first time it sets the startup disk's icon. Changing themes after that doesn't ask again; restoring the original icon may ask once more. A cancelled prompt isn't repeated until you pick another theme or turn the setting back on. |
 
 Some things macOS does not allow an app to change:
 
