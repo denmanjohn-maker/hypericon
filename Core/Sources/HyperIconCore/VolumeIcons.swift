@@ -20,7 +20,9 @@ public struct MountedVolume: Equatable, Sendable {
 
 /// Lists the disks HyperIcon may theme. Abstracted so the engine can be tested without real disks.
 public protocol VolumeListing: AnyObject {
-    func mounted() -> [MountedVolume]
+    /// The mounted disks of the given kinds (`.externalDisk`, `.networkDisk`). Disks of other kinds are not
+    /// looked inside, so macOS does not ask for access to removable or network volumes nobody wants themed.
+    func mounted(kinds: Set<Place>) -> [MountedVolume]
 }
 
 /// The real mounted volumes, minus anything that cannot or should not get an icon.
@@ -32,17 +34,20 @@ public final class SystemVolumes: VolumeListing {
 
     public init() {}
 
-    public func mounted() -> [MountedVolume] {
+    public func mounted(kinds: Set<Place>) -> [MountedVolume] {
+        guard !kinds.isEmpty else { return [] }
         let urls = FileManager.default.mountedVolumeURLs(includingResourceValuesForKeys: Self.keys, options: [.skipHiddenVolumes]) ?? []
         return urls.compactMap { url in
+            // Only the volume's own properties are read here; nothing inside it is touched until its kind is wanted.
             guard let values = try? url.resourceValues(forKeys: Set(Self.keys)),
                   let uuid = values.volumeUUIDString,
                   values.volumeIsRootFileSystem != true,
                   values.volumeIsReadOnly != true,
                   values.volumeIsBrowsable != false,
-                  !url.path.hasPrefix("/System/"),
-                  !Self.isBackupDisk(url) else { return nil }
-            return MountedVolume(url: url, uuid: uuid, place: values.volumeIsLocal == false ? .networkDisk : .externalDisk)
+                  !url.path.hasPrefix("/System/") else { return nil }
+            let place: Place = values.volumeIsLocal == false ? .networkDisk : .externalDisk
+            guard kinds.contains(place), place == .networkDisk || !Self.isBackupDisk(url) else { return nil }
+            return MountedVolume(url: url, uuid: uuid, place: place)
         }
     }
 

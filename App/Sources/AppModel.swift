@@ -87,6 +87,8 @@ final class AppModel: ObservableObject {
         change {
             $0.themeID = theme.id
             $0.paused = false
+            // Picking a theme is a deliberate choice, so a startup-disk prompt cancelled earlier may be shown again.
+            $0.declinedBootDiskChange = nil
         }
     }
 
@@ -96,7 +98,12 @@ final class AppModel: ObservableObject {
     func setPreferGit(_ value: Bool) { change { $0.preferGit = value } }
     func setMatchTagColor(_ value: Bool) { change { $0.matchTagColor = value } }
     /// Changes one of the "Disks & favorites" settings and rescans.
-    func setPlaceOption(_ option: WritableKeyPath<Preferences, Bool>, _ value: Bool) { change { $0[keyPath: option] = value } }
+    func setPlaceOption(_ option: WritableKeyPath<Preferences, Bool>, _ value: Bool) {
+        change {
+            $0[keyPath: option] = value
+            if option == \.themeBootDisk { $0.declinedBootDiskChange = nil }
+        }
+    }
 
     func addExcludedFolder() {
         let panel = NSOpenPanel()

@@ -306,9 +306,59 @@ final class EngineTests: TempDirTestCase {
         XCTAssertEqual(engine.journal.count, 0)
     }
 
+    func testDisksAreNotLookedAtUnlessThemed() {
+        make(["Volumes/USB/", "Volumes/Share/"], in: root)
+        let volumes = FakeVolumes()
+        volumes.volumes = [
+            MountedVolume(url: root.appendingPathComponent("Volumes/USB", isDirectory: true), uuid: "U1", place: .externalDisk),
+            MountedVolume(url: root.appendingPathComponent("Volumes/Share", isDirectory: true), uuid: "N1", place: .networkDisk),
+        ]
+        let engine = makeEngine(system: SystemPlaces(volumes: volumes))
+        engine.update {
+            $0.themeID = "harvest"
+            $0.themeExternalDisks = false
+        }
+        engine.applyAllNow()
+        engine.restoreAllNow(deep: true)
+        engine.applyAllNow()
+        XCTAssertEqual(volumes.requests, [], "no disk kinds are themed, so no disk is opened")
+
+        engine.update {
+            $0.themeID = "harvest"
+            $0.paused = false
+            $0.themeExternalDisks = true
+        }
+        engine.applyAllNow()
+        XCTAssertFalse(volumes.requests.isEmpty)
+        XCTAssertTrue(volumes.requests.allSatisfy { !$0.contains(.networkDisk) }, "network shares are off, so they are never opened")
+    }
+
+    func testAFailingDiskIsNotRetriedOnEveryScan() {
+        make(["Volumes/Share/"], in: root)
+        let share = MountedVolume(url: root.appendingPathComponent("Volumes/Share", isDirectory: true), uuid: "N1", place: .networkDisk)
+        let volumes = FakeVolumes()
+        volumes.volumes = [share]
+        setter.failing = [share.url]
+        let engine = makeEngine(system: SystemPlaces(volumes: volumes))
+        engine.update {
+            $0.themeID = "harvest"
+            $0.themeNetworkDisks = true
+        }
+        engine.applyAllNow()
+        engine.applyAllNow()
+        engine.applyAllNow()
+        XCTAssertEqual(setter.setCounts[share.url], 1)
+        XCTAssertNil(engine.journal["volume:N1"])
+
+        // A settings change gives it another try.
+        engine.update { $0.maxDepth = 3 }
+        engine.applyAllNow()
+        XCTAssertEqual(setter.setCounts[share.url], 2)
+    }
+
     func testBootDiskOnlyChangesWhenAskedAndDoesNotRepeatACancelledPrompt() {
         let boot = FakeBootDisk()
-        let engine = makeEngine(system: SystemPlaces(bootDisk: boot))
+        var engine = makeEngine(system: SystemPlaces(bootDisk: boot))
         engine.update { $0.themeID = "harvest" }
         engine.applyAllNow()
         XCTAssertEqual(boot.calls, [], "off by default")
@@ -320,15 +370,29 @@ final class EngineTests: TempDirTestCase {
         engine.applyAllNow()
         XCTAssertEqual(boot.calls.count, 1, "no new prompt when nothing changed")
 
-        // A cancelled prompt for a new theme is not repeated on every rescan.
+        // A cancelled prompt for a new theme is not repeated on rescans, unrelated settings changes or relaunches.
         boot.succeeds = false
         engine.update { $0.themeID = "valentine" }
         engine.applyAllNow()
         engine.applyAllNow()
+        engine.update { $0.maxDepth = 3 }
+        engine.applyAllNow()
+        engine = makeEngine(system: SystemPlaces(bootDisk: boot))
+        engine.applyAllNow()
         XCTAssertEqual(boot.calls.count, 2)
         XCTAssertEqual(engine.journal["volume:boot"]?.themeID, "harvest")
+        XCTAssertEqual(engine.settings.declinedBootDiskChange, "valentine")
 
+        // Choosing again (the app clears the marker when a theme is picked) asks again.
         boot.succeeds = true
+        engine.update {
+            $0.themeID = "valentine"
+            $0.declinedBootDiskChange = nil
+        }
+        engine.applyAllNow()
+        XCTAssertEqual(boot.calls.count, 3)
+        XCTAssertEqual(engine.journal["volume:boot"]?.themeID, "valentine")
+
         let report = engine.restoreAllNow()
         XCTAssertEqual(report.pending, 0)
         XCTAssertNil(boot.calls.last!)

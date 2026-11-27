@@ -29,6 +29,7 @@ public enum CommandLineTool {
             engine.update {
                 $0.themeID = arguments[1]
                 $0.paused = false
+                $0.declinedBootDiskChange = nil
             }
             engine.applyAllNow()
             print("Themed \(engine.journal.count) folders with \(arguments[1]).")
